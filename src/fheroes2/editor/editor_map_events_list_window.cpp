@@ -147,7 +147,7 @@ namespace
 namespace Editor
 {
     bool openMapEventsListWindow( std::vector<Maps::Map_Format::AdventureMapEventMetadata> & events, const PlayerColorsSet humanPlayerColors,
-                                  const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language )
+                                  const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent )
     {
         const CursorRestorer cursorRestorer( true, Cursor::POINTER );
 
@@ -158,7 +158,7 @@ namespace Editor
 
         int32_t offsetY = windowArea.y + elementOffset;
 
-        const fheroes2::Text title( _( "Tile events:" ), fheroes2::FontType::normalYellow() );
+        const fheroes2::Text title( isTownCaptureEvent ? _( "Town events:" ) : _( "Tile events:" ), fheroes2::FontType::normalYellow() );
         title.draw( windowArea.x + ( windowArea.width - title.width() ) / 2, offsetY, display );
 
         offsetY += title.height() + elementOffset;
@@ -250,7 +250,7 @@ namespace Editor
 
             if ( le.MouseClickLeft( buttonAdd.area() ) ) {
                 Maps::Map_Format::AdventureMapEventMetadata temp;
-                if ( eventDetailsDialog( temp, humanPlayerColors, computerPlayerColors, language ) ) {
+                if ( eventDetailsDialog( temp, humanPlayerColors, computerPlayerColors, language, isTownCaptureEvent ) ) {
                     events.emplace_back( std::move( temp ) );
 
                     eventList.updateScrollBarImage();
@@ -267,7 +267,7 @@ namespace Editor
                 eventList.resetDoubleClickedState();
 
                 Maps::Map_Format::AdventureMapEventMetadata temp = eventList.GetCurrent();
-                if ( eventDetailsDialog( temp, humanPlayerColors, computerPlayerColors, language ) ) {
+                if ( eventDetailsDialog( temp, humanPlayerColors, computerPlayerColors, language, isTownCaptureEvent ) ) {
                     eventList.GetCurrent() = std::move( temp );
 
                     eventList.Redraw();

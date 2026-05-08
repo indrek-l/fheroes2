@@ -27,6 +27,7 @@ enum SaveFileFormat : uint16_t
     // !!! IMPORTANT !!!
     // If you're adding a new version you must assign it to CURRENT_FORMAT_VERSION located at the bottom.
     // If you're removing an old version you must assign the oldest available to LAST_SUPPORTED_FORMAT_VERSION located at the bottom.
+    FORMAT_VERSION_1153_RELEASE = 10036,
     FORMAT_VERSION_1152_RELEASE = 10035,
     FORMAT_VERSION_1151_RELEASE = 10034,
     FORMAT_VERSION_1150_RELEASE = 10033,
@@ -56,5 +57,5 @@ enum SaveFileFormat : uint16_t
 
     LAST_SUPPORTED_FORMAT_VERSION = FORMAT_VERSION_1005_RELEASE,
 
-    CURRENT_FORMAT_VERSION = FORMAT_VERSION_1152_RELEASE
+    CURRENT_FORMAT_VERSION = FORMAT_VERSION_1153_RELEASE
 };

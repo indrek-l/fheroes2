@@ -1,6 +1,6 @@
 /***************************************************************************
  *   fheroes2: https://github.com/ihhub/fheroes2                           *
- *   Copyright (C) 2024 - 2025                                             *
+ *   Copyright (C) 2026                                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,24 +19,12 @@
  ***************************************************************************/
 
 #pragma once
-#include <cstdint>
 
-#include "color.h"
+class Castle;
+class Heroes;
 
-namespace Maps::Map_Format
-{
-    struct AdventureMapEventMetadata;
-}
-
-namespace fheroes2
-{
-    enum class SupportedLanguage : uint8_t;
-}
-
-namespace Editor
-{
-    // isTownCaptureEvent retitles the dialog and rewrites the recurring-event tooltip so the
-    // editor reads "Town event" / "captures the town" instead of the placed-event wording.
-    bool eventDetailsDialog( Maps::Map_Format::AdventureMapEventMetadata & eventMetadata, const PlayerColorsSet humanPlayerColors,
-                             const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent = false );
-}
+// Fires every town capture event registered on the captured castle in editor list order.
+// aiCapturer suppresses message dialogs for AI captures; non-message effects (resources,
+// artifact, secondary skill, experience) still apply to the capturing hero in both cases.
+// Single-shot events are marked consumed in place; the World serializer persists the change.
+void fireTownCaptureEvents( const Castle & castle, Heroes & hero, const bool aiCapturer );

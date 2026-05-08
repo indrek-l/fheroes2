@@ -44,6 +44,7 @@
 #include "cursor.h"
 #include "dialog.h"
 #include "dialog_selectitems.h"
+#include "editor_map_events_list_window.h"
 #include "editor_spell_selection.h"
 #include "editor_ui_helper.h"
 #include "game_hotkeys.h"
@@ -608,7 +609,8 @@ namespace
 
 namespace Editor
 {
-    bool castleDetailsDialog( Maps::Map_Format::CastleMetadata & castleMetadata, const int race, const PlayerColor color, const fheroes2::SupportedLanguage language )
+    bool castleDetailsDialog( Maps::Map_Format::CastleMetadata & castleMetadata, const int race, const PlayerColor color, const fheroes2::SupportedLanguage language,
+                              const PlayerColorsSet humanPlayerColors, const PlayerColorsSet computerPlayerColors )
     {
         const auto beforeChangesCastleMetadata{ castleMetadata };
 
@@ -658,7 +660,7 @@ namespace Editor
         fheroes2::ButtonSprite buttonSpells;
         {
             const char * translatedText = fheroes2::getSupportedText( gettext_noop( "SET SPELLS" ), fheroes2::FontType::buttonReleasedWhite() );
-            window.renderTextAdaptedButtonSprite( buttonSpells, translatedText, { 219, 78 }, fheroes2::StandardWindow::Padding::TOP_CENTER );
+            window.renderTextAdaptedButtonSprite( buttonSpells, translatedText, { 219, 95 }, fheroes2::StandardWindow::Padding::TOP_CENTER );
         }
 
         // Allow castle building checkbox.
@@ -687,6 +689,13 @@ namespace Editor
 
         const char * translatedText = fheroes2::getSupportedText( gettext_noop( "RESTRICT" ), fheroes2::FontType::buttonReleasedWhite() );
         window.renderTextAdaptedButtonSprite( buttonRestrictBuilding, translatedText, { 219, -32 }, fheroes2::StandardWindow::Padding::CENTER_CENTER );
+
+        // Town capture events list dialog. Sits between the castle-name reset button (TOP_RIGHT)
+        // and the SET SPELLS button below it, so it does not collide with the Captain's Quarters
+        // image painted further down in the right pane.
+        fheroes2::ButtonSprite buttonEvents;
+        translatedText = fheroes2::getSupportedText( gettext_noop( "EVENTS" ), fheroes2::FontType::buttonReleasedWhite() );
+        window.renderTextAdaptedButtonSprite( buttonEvents, translatedText, { 219, 60 }, fheroes2::StandardWindow::Padding::TOP_CENTER );
 
         const bool isNeutral = ( color == PlayerColor::NONE );
 
@@ -872,8 +881,18 @@ namespace Editor
             else if ( le.MouseClickLeft( buttonSpells.area() ) ) {
                 mageGuildSpellsDialog( castleMetadata.mustHaveSpells, castleMetadata.bannedSpells, race, dialogRoi );
             }
+            else if ( le.MouseClickLeft( buttonEvents.area() ) ) {
+                // Reuse the placed-events list dialog: TownCaptureEvent is an alias for AdventureMapEventMetadata.
+                // The town-capture flag retitles the dialogs so the editor reads "Town event" rather than "Tile event".
+                std::vector<Maps::Map_Format::AdventureMapEventMetadata> draft = castleMetadata.captureEvents;
+                if ( openMapEventsListWindow( draft, humanPlayerColors, computerPlayerColors, language, true ) ) {
+                    castleMetadata.captureEvents = std::move( draft );
+                }
+                display.render( dialogWithShadowRoi );
+            }
 
             buttonRestrictBuilding.drawOnState( buildingRestriction || le.isMouseLeftButtonPressedAndHeldInArea( buttonRestrictBuilding.area() ) );
+            buttonEvents.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonEvents.area() ) );
 
             if ( le.isMouseCursorPosInArea( nameArea ) ) {
                 message = _( "Click to change the Castle name." );

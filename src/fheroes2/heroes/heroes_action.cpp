@@ -86,6 +86,7 @@
 #include "skill.h"
 #include "spell.h"
 #include "tools.h"
+#include "town_capture_events.h"
 #include "translations.h"
 #include "ui_dialog.h"
 #include "ui_monster.h"
@@ -544,6 +545,10 @@ namespace
             }
             // Otherwise we fully redraw the radar map image as there might be color reset of enemy's objects.
             I.setRedraw( Interface::REDRAW_CASTLES | Interface::REDRAW_RADAR );
+
+            // Fire authored town capture events on the captured castle (after ownership transfer
+            // so the events apply to the new owner). Human-controlled capture, so dialogs render.
+            fireTownCaptureEvents( *castle, hero, false );
         };
 
         Army & army = castle->GetActualArmy();

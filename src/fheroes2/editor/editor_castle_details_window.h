@@ -22,7 +22,7 @@
 
 #include <cstdint>
 
-enum class PlayerColor : uint8_t;
+#include "color.h"
 
 namespace Maps::Map_Format
 {
@@ -36,5 +36,6 @@ namespace fheroes2
 
 namespace Editor
 {
-    bool castleDetailsDialog( Maps::Map_Format::CastleMetadata & castleMetadata, const int race, const PlayerColor color, const fheroes2::SupportedLanguage language );
+    bool castleDetailsDialog( Maps::Map_Format::CastleMetadata & castleMetadata, const int race, const PlayerColor color, const fheroes2::SupportedLanguage language,
+                              const PlayerColorsSet humanPlayerColors, const PlayerColorsSet computerPlayerColors );
 }

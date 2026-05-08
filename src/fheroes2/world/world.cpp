@@ -931,6 +931,12 @@ void World::RemoveMapObject( const MapBaseObject * obj )
     }
 }
 
+std::vector<Maps::Map_Format::TownCaptureEvent> * World::getTownCaptureEvents( const int32_t castleTileIndex )
+{
+    const auto it = _townCaptureEvents.find( castleTileIndex );
+    return it == _townCaptureEvents.end() ? nullptr : &it->second;
+}
+
 const Heroes * World::GetHeroesCondWins() const
 {
     return ( ( Settings::Get().getCurrentMapInfo().ConditionWins() & GameOver::WINS_HERO ) != 0 ) ? GetHeroes( heroIdAsWinCondition ) : nullptr;
@@ -1485,7 +1491,8 @@ IStreamBase & operator>>( IStreamBase & stream, MapObjects & objs )
 OStreamBase & operator<<( OStreamBase & stream, const World & w )
 {
     return stream << w.width << w.height << w.vec_tiles << w.vec_heroes << w.vec_castles << w.vec_kingdoms << w._customRumors << w.vec_eventsday << w.map_captureobj
-                  << w._ultimateArtifact << w._day << w._week << w._month << w.heroIdAsWinCondition << w.heroIdAsLossCondition << w.map_objects << w._seed;
+                  << w._ultimateArtifact << w._day << w._week << w._month << w.heroIdAsWinCondition << w.heroIdAsLossCondition << w.map_objects << w._seed
+                  << w._townCaptureEvents;
 }
 
 IStreamBase & operator>>( IStreamBase & stream, World & w )
@@ -1545,6 +1552,14 @@ IStreamBase & operator>>( IStreamBase & stream, World & w )
     }
 
     stream >> w.map_objects >> w._seed;
+
+    static_assert( LAST_SUPPORTED_FORMAT_VERSION < FORMAT_VERSION_1153_RELEASE, "Remove the logic below." );
+    if ( Game::GetVersionOfCurrentSaveFile() < FORMAT_VERSION_1153_RELEASE ) {
+        w._townCaptureEvents.clear();
+    }
+    else {
+        stream >> w._townCaptureEvents;
+    }
 
     w.PostLoad( false, true );
 

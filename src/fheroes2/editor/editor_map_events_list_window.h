@@ -37,8 +37,9 @@ namespace fheroes2
 
 namespace Editor
 {
-    // List editor for placed events at a single map tile. Mirrors the daily-events list dialog
-    // but adds explicit reorder buttons because the on-tile execution order matters.
+    // List editor for ordered event lists. Used both for placed-event tiles and town-capture
+    // events on castles. The isTownCaptureEvent flag adjusts the window title and per-event
+    // labelling so the editor reads "Town events" rather than "Tile events" for towns.
     bool openMapEventsListWindow( std::vector<Maps::Map_Format::AdventureMapEventMetadata> & events, const PlayerColorsSet humanPlayerColors,
-                                  const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language );
+                                  const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent = false );
 }

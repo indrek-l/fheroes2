@@ -59,6 +59,60 @@ namespace Maps::Map_Format
     constexpr size_t messageCharLimit{ 999 };
     constexpr size_t nameCharLimit{ 30 };
 
+    struct AdventureMapEventMetadata
+    {
+        std::string message;
+
+        static_assert( std::is_same_v<PlayerColorsSet, uint8_t> );
+        PlayerColorsSet humanPlayerColors{ 0 };
+        PlayerColorsSet computerPlayerColors{ 0 };
+
+        // Does this event occur more than once?
+        bool isRecurringEvent{ false };
+
+        // An artifact to be given as a reward.
+        int32_t artifact{ 0 };
+
+        int32_t artifactMetadata{ 0 };
+
+        // Resources to be given as a reward.
+        Funds resources;
+
+        int16_t attack{ 0 };
+        int16_t defense{ 0 };
+        int16_t knowledge{ 0 };
+        int16_t spellPower{ 0 };
+
+        int32_t experience{ 0 };
+
+        uint8_t secondarySkill{ 0 };
+        uint8_t secondarySkillLevel{ 0 };
+
+        int32_t monsterType{ 0 };
+        int32_t monsterCount{ 0 };
+
+        bool operator==( const AdventureMapEventMetadata & anotherMetadata ) const
+        {
+            return message == anotherMetadata.message && humanPlayerColors == anotherMetadata.humanPlayerColors
+                   && computerPlayerColors == anotherMetadata.computerPlayerColors && isRecurringEvent == anotherMetadata.isRecurringEvent
+                   && artifact == anotherMetadata.artifact && artifactMetadata == anotherMetadata.artifactMetadata && resources == anotherMetadata.resources
+                   && attack == anotherMetadata.attack && defense == anotherMetadata.defense && knowledge == anotherMetadata.knowledge
+                   && spellPower == anotherMetadata.spellPower && experience == anotherMetadata.experience && secondarySkill == anotherMetadata.secondarySkill
+                   && secondarySkillLevel == anotherMetadata.secondarySkillLevel && monsterType == anotherMetadata.monsterType
+                   && monsterCount == anotherMetadata.monsterCount;
+        }
+
+        bool operator!=( const AdventureMapEventMetadata & anotherMetadata ) const
+        {
+            return !( *this == anotherMetadata );
+        }
+    };
+
+    // Town capture events fire when an enemy hero captures a town. They share the same reward
+    // shape as placed events (resources, artifact, primary/secondary skills, monsters, message,
+    // single-shot vs recurring, player-colour filter), so we alias the struct rather than duplicate it.
+    using TownCaptureEvent = AdventureMapEventMetadata;
+
     struct CastleMetadata
     {
         // Color, type and whether it is castle or town must come from ObjectInfo to make sure
@@ -91,13 +145,17 @@ namespace Maps::Map_Format
         // The number of monsters available to hire in dwellings. A negative value means that no change will be applied.
         std::array<int32_t, 6> availableToHireMonsterCount{ -1 };
 
+        // Events fired when this castle is captured by an enemy hero. Iterated in editor list order
+        // for both human and AI captures. An empty vector preserves the legacy "no events" behavior.
+        std::vector<TownCaptureEvent> captureEvents;
+
         bool operator==( const CastleMetadata & anotherCastleMetadata ) const
         {
             return customName == anotherCastleMetadata.customName && defenderMonsterType == anotherCastleMetadata.defenderMonsterType
                    && defenderMonsterCount == anotherCastleMetadata.defenderMonsterCount && customBuildings == anotherCastleMetadata.customBuildings
                    && builtBuildings == anotherCastleMetadata.builtBuildings && bannedBuildings == anotherCastleMetadata.bannedBuildings
                    && mustHaveSpells == anotherCastleMetadata.mustHaveSpells && bannedSpells == anotherCastleMetadata.bannedSpells
-                   && availableToHireMonsterCount == anotherCastleMetadata.availableToHireMonsterCount;
+                   && availableToHireMonsterCount == anotherCastleMetadata.availableToHireMonsterCount && captureEvents == anotherCastleMetadata.captureEvents;
         }
 
         bool operator!=( const CastleMetadata & anotherCastleMetadata ) const
@@ -202,55 +260,6 @@ namespace Maps::Map_Format
     struct SignMetadata
     {
         std::string message;
-    };
-
-    struct AdventureMapEventMetadata
-    {
-        std::string message;
-
-        static_assert( std::is_same_v<PlayerColorsSet, uint8_t> );
-        PlayerColorsSet humanPlayerColors{ 0 };
-        PlayerColorsSet computerPlayerColors{ 0 };
-
-        // Does this event occur more than once?
-        bool isRecurringEvent{ false };
-
-        // An artifact to be given as a reward.
-        int32_t artifact{ 0 };
-
-        int32_t artifactMetadata{ 0 };
-
-        // Resources to be given as a reward.
-        Funds resources;
-
-        int16_t attack{ 0 };
-        int16_t defense{ 0 };
-        int16_t knowledge{ 0 };
-        int16_t spellPower{ 0 };
-
-        int32_t experience{ 0 };
-
-        uint8_t secondarySkill{ 0 };
-        uint8_t secondarySkillLevel{ 0 };
-
-        int32_t monsterType{ 0 };
-        int32_t monsterCount{ 0 };
-
-        bool operator==( const AdventureMapEventMetadata & anotherMetadata ) const
-        {
-            return message == anotherMetadata.message && humanPlayerColors == anotherMetadata.humanPlayerColors
-                   && computerPlayerColors == anotherMetadata.computerPlayerColors && isRecurringEvent == anotherMetadata.isRecurringEvent
-                   && artifact == anotherMetadata.artifact && artifactMetadata == anotherMetadata.artifactMetadata && resources == anotherMetadata.resources
-                   && attack == anotherMetadata.attack && defense == anotherMetadata.defense && knowledge == anotherMetadata.knowledge
-                   && spellPower == anotherMetadata.spellPower && experience == anotherMetadata.experience && secondarySkill == anotherMetadata.secondarySkill
-                   && secondarySkillLevel == anotherMetadata.secondarySkillLevel && monsterType == anotherMetadata.monsterType
-                   && monsterCount == anotherMetadata.monsterCount;
-        }
-
-        bool operator!=( const AdventureMapEventMetadata & anotherMetadata ) const
-        {
-            return !( *this == anotherMetadata );
-        }
     };
 
     struct SelectionObjectMetadata
@@ -435,4 +444,9 @@ namespace Maps::Map_Format
 
     bool saveMap( OStreamBase & stream, const MapFormat & map );
     bool loadMap( IStreamBase & stream, MapFormat & map );
+
+    // Exposed so that other translation units instantiating std::vector<AdventureMapEventMetadata>
+    // serializers (e.g. World's town capture events) can find these via ADL.
+    OStreamBase & operator<<( OStreamBase & stream, const AdventureMapEventMetadata & metadata );
+    IStreamBase & operator>>( IStreamBase & stream, AdventureMapEventMetadata & metadata );
 }

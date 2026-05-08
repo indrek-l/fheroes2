@@ -845,6 +845,19 @@ bool World::loadResurrectionMap( const std::string & filename )
                 }
 
                 map_captureobj.Set( static_cast<int32_t>( tileId ), MP2::OBJ_CASTLE, color );
+
+                // Capture events live in the World keyed by the castle entrance tile index so they
+                // do not have to thread through the Castle header. Each event's player-colour masks
+                // are normalised against the map's authorised colours here, mirroring the placed-event
+                // load path; further filtering against the running game's actual humans happens at fire time.
+                if ( !castleInfo.captureEvents.empty() ) {
+                    auto & runtimeEvents = _townCaptureEvents[static_cast<int32_t>( tileId )];
+                    runtimeEvents = castleInfo.captureEvents;
+                    for ( auto & runtimeEvent : runtimeEvents ) {
+                        runtimeEvent.humanPlayerColors = runtimeEvent.humanPlayerColors & map.humanPlayerColors;
+                        runtimeEvent.computerPlayerColors = runtimeEvent.computerPlayerColors & map.computerPlayerColors;
+                    }
+                }
             }
             else if ( object.group == Maps::ObjectGroup::KINGDOM_HEROES ) {
 #if defined( WITH_DEBUG )

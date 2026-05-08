@@ -40,6 +40,7 @@
 #include "game_string.h"
 #include "heroes.h"
 #include "kingdom.h"
+#include "map_format_info.h"
 #include "maps.h"
 #include "maps_objects.h"
 #include "maps_tiles.h"
@@ -476,6 +477,11 @@ public:
 
     MapEventsList * GetMapEventsList( const fheroes2::Point & pos );
 
+    // Returns a pointer to the town capture event list keyed by castle entrance tile index, or
+    // nullptr if no events were authored for that tile. Mutating the returned vector lets fired
+    // single-shot events be marked consumed in place; the changes persist via World serialization.
+    std::vector<Maps::Map_Format::TownCaptureEvent> * getTownCaptureEvents( const int32_t castleTileIndex );
+
     MapBaseObject * GetMapObject( const uint32_t uid )
     {
         return uid ? map_objects.get( uid ) : nullptr;
@@ -571,6 +577,10 @@ private:
     int32_t heroIdAsLossCondition = Heroes::UNKNOWN;
 
     MapObjects map_objects;
+
+    // Town capture events keyed by the castle's entrance tile index. Populated from CastleMetadata
+    // at map load time; mutated at runtime as single-shot events fire and get consumed.
+    std::map<int32_t, std::vector<Maps::Map_Format::TownCaptureEvent>> _townCaptureEvents;
 
     uint32_t _seed{ 0 }; // Map seed
 

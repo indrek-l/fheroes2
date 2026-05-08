@@ -68,7 +68,7 @@ namespace
 namespace Editor
 {
     bool eventDetailsDialog( Maps::Map_Format::AdventureMapEventMetadata & eventMetadata, const PlayerColorsSet humanPlayerColors,
-                             const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language )
+                             const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent )
     {
         // First, make sure that the event has proper player colors according to the map specification.
         eventMetadata.humanPlayerColors = eventMetadata.humanPlayerColors & humanPlayerColors;
@@ -92,6 +92,9 @@ namespace Editor
 
         int32_t offsetY = dialogRoi.y + elementOffset;
 
+        // Use the generic "Event:" title for both placed and town events to match the per-event
+        // window styling used by timed events. The list-level dialog still differentiates between
+        // "Tile events" and "Town events" so context is not lost.
         const fheroes2::Text title( std::string( MP2::StringObject( MP2::OBJ_EVENT ) ) + ':', fheroes2::FontType::normalYellow() );
         title.draw( dialogRoi.x + ( dialogRoi.width - title.width() ) / 2, offsetY, display );
 
@@ -485,7 +488,9 @@ namespace Editor
             else if ( le.isMouseRightButtonPressedInArea( recurringEventArea ) ) {
                 fheroes2::showStandardTextMessage(
                     _( "Cancel event after first visit" ),
-                    _( "If this checkbox is checked, the event will trigger only once. If not checked, the event will trigger every time one of the specified players crosses the event tile." ),
+                    isTownCaptureEvent
+                        ? _( "If this checkbox is checked, the event will trigger only once. If not checked, the event will trigger every time the town is captured by an enemy hero of one of the specified players." )
+                        : _( "If this checkbox is checked, the event will trigger only once. If not checked, the event will trigger every time one of the specified players crosses the event tile." ),
                     Dialog::ZERO );
             }
             else if ( le.isMouseRightButtonPressedInArea( messageRoi ) ) {

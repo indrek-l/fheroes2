@@ -107,7 +107,13 @@ namespace
     constexpr uint16_t minimumSupportedVersion{ 2 };
 
     // Change the version when there is a need to expand map format functionality.
-    constexpr uint16_t currentSupportedVersion{ 15 };
+    constexpr uint16_t currentSupportedVersion{ 16 };
+
+    // Map version under which CastleMetadata is currently being deserialized. Set by loadFromStream
+    // around the per-map-version body read so that operator>>(CastleMetadata) can decide whether the
+    // newer fields are present in the stream. Defaults to currentSupportedVersion (so writes and any
+    // unrelated reads behave as the latest version).
+    uint16_t g_castleMetadataReadVersion{ currentSupportedVersion };
 
     void convertFromV2ToV3( Maps::Map_Format::MapFormat & map )
     {
@@ -464,6 +470,19 @@ namespace
         }
     }
 
+    void convertFromV15ToV16( Maps::Map_Format::MapFormat & map )
+    {
+        static_assert( minimumSupportedVersion <= 15, "Remove this function." );
+
+        if ( map.version > 15 ) {
+            return;
+        }
+
+        // Version 16 introduces optional town capture events on CastleMetadata.
+        // No on-disk conversion is required: the new captureEvents vector is default-initialized
+        // (empty) by the v15-aware loader path, preserving legacy behavior.
+    }
+
     bool saveToStream( OStreamBase & stream, const Maps::Map_Format::BaseMapFormat & map )
     {
         stream << currentSupportedVersion << map.isCampaign << map.difficulty << map.availablePlayerColors << map.humanPlayerColors << map.computerPlayerColors
@@ -586,7 +605,15 @@ namespace
             decompressed >> standardMetadata;
         }
 
-        decompressed >> map.castleMetadata >> map.heroMetadata >> map.sphinxMetadata >> map.signMetadata;
+        // Inform the CastleMetadata deserializer how to interpret pre-v16 streams that do not contain
+        // the captureEvents field. The flag is reset to currentSupportedVersion below for safety.
+        g_castleMetadataReadVersion = map.version;
+
+        decompressed >> map.castleMetadata;
+
+        g_castleMetadataReadVersion = currentSupportedVersion;
+
+        decompressed >> map.heroMetadata >> map.sphinxMetadata >> map.signMetadata;
 
         // Maps before format version 15 stored a single AdventureMapEventMetadata per UID.
         // Version 15+ stores a vector to support multiple events per placed-event tile.
@@ -630,6 +657,7 @@ namespace
         convertFromV12ToV13( map );
         convertFromV13ToV14( map );
         convertFromV14ToV15( map, std::move( legacyEventMetadata ) );
+        convertFromV15ToV16( map );
 
         return !stream.fail();
     }
@@ -677,13 +705,22 @@ namespace Maps::Map_Format
     OStreamBase & operator<<( OStreamBase & stream, const CastleMetadata & metadata )
     {
         return stream << metadata.customName << metadata.defenderMonsterType << metadata.defenderMonsterCount << metadata.customBuildings << metadata.builtBuildings
-                      << metadata.bannedBuildings << metadata.mustHaveSpells << metadata.bannedSpells << metadata.availableToHireMonsterCount;
+                      << metadata.bannedBuildings << metadata.mustHaveSpells << metadata.bannedSpells << metadata.availableToHireMonsterCount << metadata.captureEvents;
     }
 
     IStreamBase & operator>>( IStreamBase & stream, CastleMetadata & metadata )
     {
-        return stream >> metadata.customName >> metadata.defenderMonsterType >> metadata.defenderMonsterCount >> metadata.customBuildings >> metadata.builtBuildings
-               >> metadata.bannedBuildings >> metadata.mustHaveSpells >> metadata.bannedSpells >> metadata.availableToHireMonsterCount;
+        stream >> metadata.customName >> metadata.defenderMonsterType >> metadata.defenderMonsterCount >> metadata.customBuildings >> metadata.builtBuildings
+            >> metadata.bannedBuildings >> metadata.mustHaveSpells >> metadata.bannedSpells >> metadata.availableToHireMonsterCount;
+
+        if ( g_castleMetadataReadVersion >= 16 ) {
+            stream >> metadata.captureEvents;
+        }
+        else {
+            metadata.captureEvents.clear();
+        }
+
+        return stream;
     }
 
     OStreamBase & operator<<( OStreamBase & stream, const HeroMetadata & metadata )

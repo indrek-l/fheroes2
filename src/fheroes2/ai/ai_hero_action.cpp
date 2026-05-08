@@ -78,6 +78,7 @@
 #include "spell.h"
 #include "spell_info.h"
 #include "visit.h"
+#include "town_capture_events.h"
 #include "world.h"
 
 namespace
@@ -430,6 +431,9 @@ namespace
             world.CaptureObject( dstIndex, hero.GetColor() );
 
             castle->Scout();
+
+            // AI captures fire the same authored events but with dialog rendering suppressed.
+            fireTownCaptureEvents( *castle, hero, true );
         };
 
         Army & army = castle->GetActualArmy();
