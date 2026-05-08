@@ -225,7 +225,7 @@ bool Dialog::SelectCount( std::string header, const int32_t min, const int32_t m
 }
 
 bool Dialog::inputString( const fheroes2::TextBase & title, const fheroes2::TextBase & body, std::string & result, const size_t charLimit, const bool isMultiLine,
-                          const std::optional<fheroes2::SupportedLanguage> & textLanguage )
+                          const std::optional<fheroes2::SupportedLanguage> & textLanguage, const bool allowEmpty )
 {
     fheroes2::Display & display = fheroes2::Display::instance();
 
@@ -303,7 +303,7 @@ bool Dialog::inputString( const fheroes2::TextBase & title, const fheroes2::Text
     // This dialog uses the "uniform" background so the pressed button sprite ID is 2.
     fheroes2::Button buttonVirtualKB( dst_pt.x, dst_pt.y, buttonVirtualKBIcnID, 0, 2 );
 
-    if ( result.empty() ) {
+    if ( result.empty() && !allowEmpty ) {
         buttonOk.disable();
     }
     else {
@@ -334,7 +334,7 @@ bool Dialog::inputString( const fheroes2::TextBase & title, const fheroes2::Text
 
         // In this dialog we input text so we need to use hotkeys that cannot be use in text typing.
         if ( ( !isMultiLine && le.isKeyPressed( fheroes2::Key::KEY_ENTER ) ) || ( buttonOk.isEnabled() && le.MouseClickLeft( buttonOk.area() ) ) ) {
-            return !result.empty();
+            return allowEmpty || !result.empty();
         }
 
         if ( le.isKeyPressed( fheroes2::Key::KEY_ESCAPE ) || le.MouseClickLeft( buttonCancel.area() ) ) {
@@ -426,11 +426,11 @@ bool Dialog::inputString( const fheroes2::TextBase & title, const fheroes2::Text
 
         if ( redraw ) {
             bool redrawOkButton = false;
-            if ( result.empty() && buttonOk.isEnabled() ) {
+            if ( result.empty() && !allowEmpty && buttonOk.isEnabled() ) {
                 buttonOk.disable();
                 redrawOkButton = true;
             }
-            else if ( !result.empty() && !buttonOk.isEnabled() ) {
+            else if ( ( !result.empty() || allowEmpty ) && !buttonOk.isEnabled() ) {
                 buttonOk.enable();
                 redrawOkButton = true;
             }
@@ -450,7 +450,7 @@ bool Dialog::inputString( const fheroes2::TextBase & title, const fheroes2::Text
         }
     }
 
-    return !result.empty();
+    return allowEmpty || !result.empty();
 }
 
 int Dialog::ArmySplitTroop( const int32_t freeSlots, const int32_t redistributeMax, int32_t & redistributeCount, bool & useFastSplit, const std::string & troopName )

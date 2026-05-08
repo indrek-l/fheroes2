@@ -2383,15 +2383,17 @@ namespace Editor
                 }
             }
             else if ( le.MouseClickLeft( buttonEpilogues.area() ) ) {
+                // Empty input is the user-visible way to fall back to the default generated message,
+                // so allowEmpty is enabled here.
                 std::string victoryMessage = mapFormat.customVictoryMessage;
                 const fheroes2::Text victoryBody{ std::string( _( "Custom victory message (leave empty for default):" ) ), fheroes2::FontType::normalWhite() };
-                if ( Dialog::inputString( fheroes2::Text{}, victoryBody, victoryMessage, Maps::Map_Format::messageCharLimit, true, mapFormat.mainLanguage ) ) {
+                if ( Dialog::inputString( fheroes2::Text{}, victoryBody, victoryMessage, Maps::Map_Format::messageCharLimit, true, mapFormat.mainLanguage, true ) ) {
                     mapFormat.customVictoryMessage = std::move( victoryMessage );
                 }
 
                 std::string lossMessage = mapFormat.customLossMessage;
                 const fheroes2::Text lossBody{ std::string( _( "Custom defeat message (leave empty for default):" ) ), fheroes2::FontType::normalWhite() };
-                if ( Dialog::inputString( fheroes2::Text{}, lossBody, lossMessage, Maps::Map_Format::messageCharLimit, true, mapFormat.mainLanguage ) ) {
+                if ( Dialog::inputString( fheroes2::Text{}, lossBody, lossMessage, Maps::Map_Format::messageCharLimit, true, mapFormat.mainLanguage, true ) ) {
                     mapFormat.customLossMessage = std::move( lossMessage );
                 }
             }

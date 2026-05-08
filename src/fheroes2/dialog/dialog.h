@@ -119,8 +119,11 @@ namespace Dialog
                       const fheroes2::DialogElement * topUiElement = nullptr, const fheroes2::DialogElement * bottomUiElement = nullptr );
 
     // If character limit is set to 0, then no limitation for the resulting string will be applied.
+    // When allowEmpty is true the OK button stays enabled even with an empty field and a confirmed
+    // empty result returns true; this is meant for callers where empty input is a valid choice
+    // (for example a "use default" sentinel).
     bool inputString( const fheroes2::TextBase & title, const fheroes2::TextBase & body, std::string & result, const size_t charLimit, const bool isMultiLine,
-                      const std::optional<fheroes2::SupportedLanguage> & textLanguage );
+                      const std::optional<fheroes2::SupportedLanguage> & textLanguage, const bool allowEmpty = false );
 
     Troop RecruitMonster( const Monster & monster0, const uint32_t available, const bool allowDowngradedMonster, const int32_t windowOffsetY );
     void DwellingInfo( const Monster &, const uint32_t available );
