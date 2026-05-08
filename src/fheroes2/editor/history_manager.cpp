@@ -181,7 +181,7 @@ namespace fheroes2
             _action = std::make_unique<MetadataMapAction<Maps::Map_Format::SignMetadata>>( mapFormat.signMetadata );
             break;
         case ActionType::ADVENTURE_MAP_EVENT_METADATA:
-            _action = std::make_unique<MetadataMapAction<Maps::Map_Format::AdventureMapEventMetadata>>( mapFormat.adventureMapEventMetadata );
+            _action = std::make_unique<MetadataMapAction<std::vector<Maps::Map_Format::AdventureMapEventMetadata>>>( mapFormat.adventureMapEventMetadata );
             break;
         case ActionType::SELECTION_METADATA:
             _action = std::make_unique<MetadataMapAction<Maps::Map_Format::SelectionObjectMetadata>>( mapFormat.selectionObjectMetadata );

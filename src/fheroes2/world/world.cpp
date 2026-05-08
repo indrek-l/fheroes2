@@ -914,14 +914,14 @@ void World::ActionForMagellanMaps( const PlayerColor color )
     }
 }
 
-MapEvent * World::GetMapEvent( const fheroes2::Point & pos )
+MapEventsList * World::GetMapEventsList( const fheroes2::Point & pos )
 {
     std::list<MapBaseObject *> res = map_objects.get( pos );
     if ( res.empty() ) {
         return nullptr;
     }
 
-    return dynamic_cast<MapEvent *>( res.front() );
+    return dynamic_cast<MapEventsList *>( res.front() );
 }
 
 void World::RemoveMapObject( const MapBaseObject * obj )
@@ -1324,9 +1324,11 @@ void World::fixFrenchCharactersInStrings()
             break;
         }
         case MP2::OBJ_EVENT: {
-            MapEvent * event = dynamic_cast<MapEvent *>( map_objects.get( tile.GetIndex() ) );
-            if ( event != nullptr ) {
-                fheroes2::fixFrenchCharactersForMP2Map( event->message );
+            MapEventsList * eventsList = dynamic_cast<MapEventsList *>( map_objects.get( tile.GetIndex() ) );
+            if ( eventsList != nullptr ) {
+                for ( MapEvent & event : eventsList->events ) {
+                    fheroes2::fixFrenchCharactersForMP2Map( event.message );
+                }
             }
             break;
         }
@@ -1365,7 +1367,7 @@ OStreamBase & operator<<( OStreamBase & stream, const MapObjects & objs )
     for ( const auto & [uid, obj] : objectsRef ) {
         assert( obj && obj->GetUID() == uid );
 
-        if ( const auto * objPtr = dynamic_cast<const MapEvent *>( obj.get() ); objPtr != nullptr ) {
+        if ( const auto * objPtr = dynamic_cast<const MapEventsList *>( obj.get() ); objPtr != nullptr ) {
             stream << uid << MP2::OBJ_EVENT << *objPtr;
 
             continue;
@@ -1417,8 +1419,21 @@ IStreamBase & operator>>( IStreamBase & stream, MapObjects & objs )
         std::unique_ptr<MapBaseObject> obj = [&stream, type]() -> std::unique_ptr<MapBaseObject> {
             switch ( type ) {
             case MP2::OBJ_EVENT: {
-                auto ptr = std::make_unique<MapEvent>();
-                stream >> *ptr;
+                auto ptr = std::make_unique<MapEventsList>();
+                if ( Game::GetVersionOfCurrentSaveFile() < FORMAT_VERSION_1152_RELEASE ) {
+                    // Legacy savegames stored a single MapEvent at the tile UID. Its on-disk layout
+                    // started with a MapBaseObject prefix (position + uid) followed by the event body.
+                    // The new MapEvent ser layout drops the prefix, so we read it separately here and
+                    // assign it to the wrapping MapEventsList.
+                    stream >> static_cast<MapBaseObject &>( *ptr );
+
+                    MapEvent legacy;
+                    stream >> legacy;
+                    ptr->events.emplace_back( std::move( legacy ) );
+                }
+                else {
+                    stream >> *ptr;
+                }
 
                 return ptr;
             }

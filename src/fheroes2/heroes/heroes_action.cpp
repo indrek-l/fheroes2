@@ -2808,8 +2808,8 @@ namespace
     {
         DEBUG_LOG( DBG_GAME, DBG_INFO, hero.GetName() )
 
-        MapEvent * mapEvent = world.GetMapEvent( Maps::GetPoint( tileIndex ) );
-        if ( mapEvent == nullptr ) {
+        MapEventsList * eventsList = world.GetMapEventsList( Maps::GetPoint( tileIndex ) );
+        if ( eventsList == nullptr ) {
             // No data found for this event type. This may happen in the case of hacked maps.
             DEBUG_LOG( DBG_AI, DBG_INFO, "Adventure Map event at index " << tileIndex << " is missing!" )
 
@@ -2819,101 +2819,116 @@ namespace
             return;
         }
 
-        if ( !mapEvent->isAllow( hero.GetColor() ) ) {
+        bool didFireAny = false;
+        // Iterate every event registered on this tile in editor list order so that consequences arrive
+        // in a deterministic sequence and message dialogs stack the same way for every player.
+        for ( MapEvent & mapEvent : eventsList->events ) {
+            if ( !mapEvent.isAllow( hero.GetColor() ) ) {
+                continue;
+            }
+
+            didFireAny = true;
+            hero.SetMove( false );
+
+            const Funds fundsToUpdate = Resource::CalculateEventResourceUpdate( hero.GetKingdom().GetFunds(), mapEvent.resources );
+
+            if ( mapEvent.resources.GetValidItemsCount() ) {
+                hero.GetKingdom().AddFundsResource( mapEvent.resources );
+            }
+
+            const std::vector<fheroes2::ResourceDialogElement> resourceUI = fheroes2::getResourceDialogElements( fundsToUpdate );
+
+            std::vector<const fheroes2::DialogElement *> elementUI;
+            elementUI.reserve( resourceUI.size() );
+            for ( const fheroes2::ResourceDialogElement & element : resourceUI ) {
+                elementUI.emplace_back( &element );
+            }
+
+            // Check for the presence of an artifact in the event and display it in the dialog.
+            std::unique_ptr<fheroes2::ArtifactDialogElement> artifactUI;
+            const Artifact & art = mapEvent.artifact;
+            if ( art.isValid() ) {
+                artifactUI = std::make_unique<fheroes2::ArtifactDialogElement>( art );
+                AudioManager::PlaySound( M82::TREASURE );
+                elementUI.emplace_back( artifactUI.get() );
+            }
+
+            std::unique_ptr<fheroes2::SecondarySkillDialogElement> secondarySkillUI;
+            const auto & skill = mapEvent.secondarySkill;
+            if ( skill.isValid() ) {
+                bool addSkill = false;
+
+                if ( hero.HasSecondarySkill( skill.Skill() ) ) {
+                    addSkill = ( hero.GetSecondarySkills().GetLevel( skill.Skill() ) < skill.Level() );
+                }
+                else {
+                    addSkill = !hero.HasMaxSecondarySkill();
+                }
+
+                if ( addSkill ) {
+                    secondarySkillUI = std::make_unique<fheroes2::SecondarySkillDialogElement>( skill, hero );
+                    elementUI.emplace_back( secondarySkillUI.get() );
+
+                    hero.LearnSkill( skill );
+
+                    // When Scouting skill is learned we reveal the fog and redraw the radar map image in a new scout area of the hero.
+                    if ( skill.Skill() == Skill::Secondary::SCOUTING ) {
+                        hero.Scout( hero.GetIndex() );
+                        hero.ScoutRadar();
+                    }
+                }
+            }
+
+            std::unique_ptr<fheroes2::ExperienceDialogElement> experienceUI;
+            if ( mapEvent.experience > 0 ) {
+                experienceUI = std::make_unique<fheroes2::ExperienceDialogElement>( mapEvent.experience );
+                elementUI.emplace_back( experienceUI.get() );
+            }
+
+            const fheroes2::Text emptyText;
+            const fheroes2::Text body( mapEvent.message, fheroes2::FontType::normalWhite(), Settings::Get().getCurrentMapInfo().getSupportedLanguage() );
+
+            int32_t dialogHeight = fheroes2::getDialogHeight( emptyText, body, Dialog::OK, elementUI );
+            const int32_t displayHeight = fheroes2::Display::instance().height();
+            if ( dialogHeight > displayHeight && !elementUI.empty() ) {
+                // We have to split the message into 2 as it is too big.
+                std::vector<const fheroes2::DialogElement *> secondDialogUIElement;
+                while ( dialogHeight > displayHeight && !elementUI.empty() ) {
+                    secondDialogUIElement.push_back( elementUI.back() );
+                    elementUI.pop_back();
+                    dialogHeight = fheroes2::getDialogHeight( emptyText, body, Dialog::OK, elementUI );
+                }
+
+                fheroes2::showMessage( emptyText, body, Dialog::OK, elementUI );
+                fheroes2::showMessage( emptyText, emptyText, Dialog::OK, secondDialogUIElement );
+            }
+            else {
+                fheroes2::showMessage( emptyText, body, Dialog::OK, elementUI );
+            }
+
+            // PickupArtifact() has a built-in check for Artifact correctness, the presence of a magic book
+            // and the fullness of the bag. It also displays appropriate text when an artifact cannot be picked up.
+            hero.PickupArtifact( art );
+
+            if ( mapEvent.experience > 0 ) {
+                hero.IncreaseExperience( static_cast<uint32_t>( mapEvent.experience ) );
+            }
+
+            mapEvent.SetVisited();
+        }
+
+        if ( !didFireAny ) {
             return;
         }
 
-        hero.SetMove( false );
+        // The runtime container is removed only when every remaining event is fully consumed
+        // (colors cleared by SetVisited). A mix of single-shot and recurring events keeps the tile alive.
+        const bool allConsumed = std::all_of( eventsList->events.cbegin(), eventsList->events.cend(),
+                                              []( const MapEvent & mapEvent ) { return mapEvent.colors == 0; } );
 
-        const Funds fundsToUpdate = Resource::CalculateEventResourceUpdate( hero.GetKingdom().GetFunds(), mapEvent->resources );
-
-        if ( mapEvent->resources.GetValidItemsCount() ) {
-            hero.GetKingdom().AddFundsResource( mapEvent->resources );
-        }
-
-        const std::vector<fheroes2::ResourceDialogElement> resourceUI = fheroes2::getResourceDialogElements( fundsToUpdate );
-
-        std::vector<const fheroes2::DialogElement *> elementUI;
-        elementUI.reserve( resourceUI.size() );
-        for ( const fheroes2::ResourceDialogElement & element : resourceUI ) {
-            elementUI.emplace_back( &element );
-        }
-
-        // Check for the presence of an artifact in the event and display it in the dialog.
-        std::unique_ptr<fheroes2::ArtifactDialogElement> artifactUI;
-        const Artifact & art = mapEvent->artifact;
-        if ( art.isValid() ) {
-            artifactUI = std::make_unique<fheroes2::ArtifactDialogElement>( art );
-            AudioManager::PlaySound( M82::TREASURE );
-            elementUI.emplace_back( artifactUI.get() );
-        }
-
-        std::unique_ptr<fheroes2::SecondarySkillDialogElement> secondarySkillUI;
-        const auto & skill = mapEvent->secondarySkill;
-        if ( skill.isValid() ) {
-            bool addSkill = false;
-
-            if ( hero.HasSecondarySkill( skill.Skill() ) ) {
-                addSkill = ( hero.GetSecondarySkills().GetLevel( skill.Skill() ) < skill.Level() );
-            }
-            else {
-                addSkill = !hero.HasMaxSecondarySkill();
-            }
-
-            if ( addSkill ) {
-                secondarySkillUI = std::make_unique<fheroes2::SecondarySkillDialogElement>( skill, hero );
-                elementUI.emplace_back( secondarySkillUI.get() );
-
-                hero.LearnSkill( skill );
-
-                // When Scouting skill is learned we reveal the fog and redraw the radar map image in a new scout area of the hero.
-                if ( skill.Skill() == Skill::Secondary::SCOUTING ) {
-                    hero.Scout( hero.GetIndex() );
-                    hero.ScoutRadar();
-                }
-            }
-        }
-
-        std::unique_ptr<fheroes2::ExperienceDialogElement> experienceUI;
-        if ( mapEvent->experience > 0 ) {
-            experienceUI = std::make_unique<fheroes2::ExperienceDialogElement>( mapEvent->experience );
-            elementUI.emplace_back( experienceUI.get() );
-        }
-
-        const fheroes2::Text emptyText;
-        const fheroes2::Text body( mapEvent->message, fheroes2::FontType::normalWhite(), Settings::Get().getCurrentMapInfo().getSupportedLanguage() );
-
-        int32_t dialogHeight = fheroes2::getDialogHeight( emptyText, body, Dialog::OK, elementUI );
-        const int32_t displayHeight = fheroes2::Display::instance().height();
-        if ( dialogHeight > displayHeight && !elementUI.empty() ) {
-            // We have to split the message into 2 as it is too big.
-            std::vector<const fheroes2::DialogElement *> secondDialogUIElement;
-            while ( dialogHeight > displayHeight && !elementUI.empty() ) {
-                secondDialogUIElement.push_back( elementUI.back() );
-                elementUI.pop_back();
-                dialogHeight = fheroes2::getDialogHeight( emptyText, body, Dialog::OK, elementUI );
-            }
-
-            fheroes2::showMessage( emptyText, body, Dialog::OK, elementUI );
-            fheroes2::showMessage( emptyText, emptyText, Dialog::OK, secondDialogUIElement );
-        }
-        else {
-            fheroes2::showMessage( emptyText, body, Dialog::OK, elementUI );
-        }
-
-        // PickupArtifact() has a built-in check for Artifact correctness, the presence of a magic book
-        // and the fullness of the bag. It also displays appropriate text when an artifact cannot be picked up.
-        hero.PickupArtifact( art );
-
-        if ( mapEvent->experience > 0 ) {
-            hero.IncreaseExperience( static_cast<uint32_t>( mapEvent->experience ) );
-        }
-
-        mapEvent->SetVisited();
-
-        if ( mapEvent->isSingleTimeEvent ) {
+        if ( allConsumed ) {
             hero.setObjectTypeUnderHero( MP2::OBJ_NONE );
-            world.RemoveMapObject( mapEvent );
+            world.RemoveMapObject( eventsList );
         }
     }
 

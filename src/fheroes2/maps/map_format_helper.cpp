@@ -1138,12 +1138,15 @@ namespace Maps
 
             switch ( objectType ) {
             case MP2::OBJ_EVENT: {
-                const auto [dummy, isMetadataEmplaced] = map.adventureMapEventMetadata.try_emplace( uid );
+                const auto [iter, isMetadataEmplaced] = map.adventureMapEventMetadata.try_emplace( uid );
                 assert( isMetadataEmplaced );
 
 #ifdef NDEBUG
                 (void)isMetadataEmplaced;
 #endif
+                // Each placed-event tile starts with a single default-initialized event so that legacy
+                // editor and runtime paths that expect at least one event keep working.
+                iter->second.emplace_back();
                 break;
             }
             case MP2::OBJ_SIGN: {
@@ -1539,9 +1542,11 @@ namespace Maps
         }
 
         // Update events according to the possible changes in human and/or AI player colors.
-        for ( auto & [dummy, eventMetadata] : map.adventureMapEventMetadata ) {
-            eventMetadata.humanPlayerColors = eventMetadata.humanPlayerColors & map.humanPlayerColors;
-            eventMetadata.computerPlayerColors = eventMetadata.computerPlayerColors & map.computerPlayerColors;
+        for ( auto & [dummy, eventList] : map.adventureMapEventMetadata ) {
+            for ( auto & eventMetadata : eventList ) {
+                eventMetadata.humanPlayerColors = eventMetadata.humanPlayerColors & map.humanPlayerColors;
+                eventMetadata.computerPlayerColors = eventMetadata.computerPlayerColors & map.computerPlayerColors;
+            }
         }
 
         // Check and update the special victory and loss conditions that depend on player objects.
@@ -1944,8 +1949,11 @@ namespace Maps
             translationInfo.signMetadata.try_emplace( tileId, signInfo.message );
         }
 
-        for ( const auto & [tileId, eventInfo] : map.adventureMapEventMetadata ) {
-            translationInfo.adventureMapEventMetadata.try_emplace( tileId, eventInfo.message );
+        for ( const auto & [tileId, eventList] : map.adventureMapEventMetadata ) {
+            // Translation currently only covers the first event message per tile; multi-event translation is future work.
+            if ( !eventList.empty() ) {
+                translationInfo.adventureMapEventMetadata.try_emplace( tileId, eventList.front().message );
+            }
         }
 
         loadTranslation( map, language );
@@ -2066,11 +2074,12 @@ namespace Maps
 
         for ( auto & [tileId, eventInfo] : translationInfo.adventureMapEventMetadata ) {
             auto iter = map.adventureMapEventMetadata.find( tileId );
-            if ( iter == map.adventureMapEventMetadata.end() ) {
+            if ( iter == map.adventureMapEventMetadata.end() || iter->second.empty() ) {
                 continue;
             }
 
-            iter->second.message = std::move( eventInfo );
+            // See above: only the first event message participates in translation for now.
+            iter->second.front().message = std::move( eventInfo );
         }
 
         return true;

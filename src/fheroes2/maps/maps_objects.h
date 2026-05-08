@@ -67,11 +67,14 @@ protected:
     uint32_t uid{ 0 };
 };
 
-struct MapEvent final : public MapBaseObject
+// Plain data record describing a single placed event. MapEvent intentionally does not inherit
+// MapBaseObject: tile UID/position now live on the parent MapEventsList so MapEvent stays
+// trivially copyable for storage in std::vector.
+struct MapEvent
 {
     MapEvent() = default;
 
-    void LoadFromMP2( const int32_t index, const std::vector<uint8_t> & data );
+    void LoadFromMP2( const std::vector<uint8_t> & data );
 
     bool isAllow( const PlayerColor color ) const
     {
@@ -94,6 +97,16 @@ struct MapEvent final : public MapBaseObject
 
     Skill::Secondary secondarySkill;
     int32_t experience{ 0 };
+};
+
+// Holds every event placed on a single tile. Replaces the legacy registration of a stand-alone
+// MapEvent in MapObjects: the list itself owns the tile's UID, and the per-event entries live
+// inside the vector in editor list order (which is also the runtime execution order).
+struct MapEventsList final : public MapBaseObject
+{
+    MapEventsList() = default;
+
+    std::vector<MapEvent> events;
 };
 
 struct MapSphinx final : public MapBaseObject
@@ -155,6 +168,9 @@ struct MapSign final : public MapBaseObject
 
 OStreamBase & operator<<( OStreamBase & stream, const MapEvent & obj );
 IStreamBase & operator>>( IStreamBase & stream, MapEvent & obj );
+
+OStreamBase & operator<<( OStreamBase & stream, const MapEventsList & obj );
+IStreamBase & operator>>( IStreamBase & stream, MapEventsList & obj );
 
 OStreamBase & operator<<( OStreamBase & stream, const MapSphinx & obj );
 IStreamBase & operator>>( IStreamBase & stream, MapSphinx & obj );

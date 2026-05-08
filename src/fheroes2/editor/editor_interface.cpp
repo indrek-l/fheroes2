@@ -42,6 +42,7 @@
 #include "direction.h"
 #include "editor_castle_details_window.h"
 #include "editor_event_details_window.h"
+#include "editor_map_events_list_window.h"
 #include "editor_map_specs_window.h"
 #include "editor_object_popup_window.h"
 #include "editor_save_map_window.h"
@@ -1208,14 +1209,18 @@ namespace
         }
 
         os << "-------   Events   -------" << std::endl;
-        for ( const auto & [uid, event] : mapFormat.adventureMapEventMetadata ) {
-            if ( !event.message.empty() ) {
+        for ( const auto & [uid, eventList] : mapFormat.adventureMapEventMetadata ) {
+            for ( size_t eventIdx = 0; eventIdx < eventList.size(); ++eventIdx ) {
+                const auto & event = eventList[eventIdx];
+                if ( event.message.empty() ) {
+                    continue;
+                }
                 const int32_t index = getObjectIndex( mapFormat, uid, Maps::ObjectGroup::ADVENTURE_MISCELLANEOUS );
                 if ( index < 0 ) {
-                    os << "!!! [absent object " << uid << "]: " << event.message << std::endl;
+                    os << "!!! [absent object " << uid << ", event " << eventIdx << "]: " << event.message << std::endl;
                 }
                 else {
-                    os << "[" << ( index % mapFormat.width ) << ',' << ( index / mapFormat.width ) << "]: " << event.message << std::endl;
+                    os << "[" << ( index % mapFormat.width ) << ',' << ( index / mapFormat.width ) << "] event " << eventIdx << ": " << event.message << std::endl;
                 }
             }
         }
@@ -2095,13 +2100,13 @@ namespace Interface
                 else if ( objectType == MP2::OBJ_EVENT ) {
                     assert( _mapFormat.adventureMapEventMetadata.find( object.id ) != _mapFormat.adventureMapEventMetadata.end() );
 
-                    auto & eventMetadata = _mapFormat.adventureMapEventMetadata[object.id];
-                    Maps::Map_Format::AdventureMapEventMetadata newEventData = eventMetadata;
+                    auto & eventList = _mapFormat.adventureMapEventMetadata[object.id];
+                    std::vector<Maps::Map_Format::AdventureMapEventMetadata> newEventList = eventList;
 
-                    if ( Editor::eventDetailsDialog( newEventData, _mapFormat.humanPlayerColors, _mapFormat.computerPlayerColors, _mapFormat.mainLanguage )
-                         && newEventData != eventMetadata ) {
+                    if ( Editor::openMapEventsListWindow( newEventList, _mapFormat.humanPlayerColors, _mapFormat.computerPlayerColors, _mapFormat.mainLanguage )
+                         && newEventList != eventList ) {
                         fheroes2::ActionCreator action( _historyManager, _mapFormat, fheroes2::ActionCreator::ActionType::ADVENTURE_MAP_EVENT_METADATA );
-                        eventMetadata = std::move( newEventData );
+                        eventList = std::move( newEventList );
                         action.commit();
                     }
                 }
@@ -2828,7 +2833,7 @@ namespace Interface
         std::map<uint32_t, Maps::Map_Format::HeroMetadata> heroMetadata = _mapFormat.heroMetadata;
         std::map<uint32_t, Maps::Map_Format::SphinxMetadata> sphinxMetadata = _mapFormat.sphinxMetadata;
         std::map<uint32_t, Maps::Map_Format::SignMetadata> signMetadata = _mapFormat.signMetadata;
-        std::map<uint32_t, Maps::Map_Format::AdventureMapEventMetadata> adventureMapEventMetadata = _mapFormat.adventureMapEventMetadata;
+        std::map<uint32_t, std::vector<Maps::Map_Format::AdventureMapEventMetadata>> adventureMapEventMetadata = _mapFormat.adventureMapEventMetadata;
         std::map<uint32_t, Maps::Map_Format::SelectionObjectMetadata> selectionObjectMetadata = _mapFormat.selectionObjectMetadata;
         std::map<uint32_t, Maps::Map_Format::CapturableObjectMetadata> capturableObjectsMetadata = _mapFormat.capturableObjectsMetadata;
         std::map<uint32_t, Maps::Map_Format::MonsterMetadata> monsterMetadata = _mapFormat.monsterMetadata;

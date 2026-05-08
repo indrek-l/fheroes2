@@ -474,7 +474,7 @@ public:
 
     EventsDate GetEventsDate( const PlayerColor color ) const;
 
-    MapEvent * GetMapEvent( const fheroes2::Point & pos );
+    MapEventsList * GetMapEventsList( const fheroes2::Point & pos );
 
     MapBaseObject * GetMapObject( const uint32_t uid )
     {

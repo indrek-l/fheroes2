@@ -1594,7 +1594,7 @@ void Maps::Tile::updateTileObjectIcnIndex( Maps::Tile & tile, const uint32_t uid
 void Maps::Tile::updateObjectType()
 {
     if ( _mainObjectType == MP2::OBJ_EVENT ) {
-        if ( world.GetMapEvent( Maps::GetPoint( _index ) ) == nullptr ) {
+        if ( world.GetMapEventsList( Maps::GetPoint( _index ) ) == nullptr ) {
             // No data found for this event type. This may happen in the case of hacked maps.
             DEBUG_LOG( DBG_AI, DBG_INFO, "Adventure Map event at index " << _index << " is missing!" )
 

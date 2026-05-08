@@ -107,7 +107,7 @@ namespace
     constexpr uint16_t minimumSupportedVersion{ 2 };
 
     // Change the version when there is a need to expand map format functionality.
-    constexpr uint16_t currentSupportedVersion{ 14 };
+    constexpr uint16_t currentSupportedVersion{ 15 };
 
     void convertFromV2ToV3( Maps::Map_Format::MapFormat & map )
     {
@@ -448,6 +448,22 @@ namespace
         // (empty strings) by the loader when map.version < 14, preserving legacy behavior.
     }
 
+    // Wraps each legacy single-event metadata entry into a 1-element vector. The legacy container
+    // is consumed via move; the converter is invoked from loadFromStream when reading a pre-v15 map.
+    void convertFromV14ToV15( Maps::Map_Format::MapFormat & map, std::map<uint32_t, Maps::Map_Format::AdventureMapEventMetadata> && legacyEventMetadata )
+    {
+        static_assert( minimumSupportedVersion <= 14, "Remove this function." );
+
+        if ( map.version > 14 ) {
+            return;
+        }
+
+        map.adventureMapEventMetadata.clear();
+        for ( auto & [uid, metadata] : legacyEventMetadata ) {
+            map.adventureMapEventMetadata[uid].emplace_back( std::move( metadata ) );
+        }
+    }
+
     bool saveToStream( OStreamBase & stream, const Maps::Map_Format::BaseMapFormat & map )
     {
         stream << currentSupportedVersion << map.isCampaign << map.difficulty << map.availablePlayerColors << map.humanPlayerColors << map.computerPlayerColors
@@ -570,7 +586,19 @@ namespace
             decompressed >> standardMetadata;
         }
 
-        decompressed >> map.castleMetadata >> map.heroMetadata >> map.sphinxMetadata >> map.signMetadata >> map.adventureMapEventMetadata >> map.selectionObjectMetadata;
+        decompressed >> map.castleMetadata >> map.heroMetadata >> map.sphinxMetadata >> map.signMetadata;
+
+        // Maps before format version 15 stored a single AdventureMapEventMetadata per UID.
+        // Version 15+ stores a vector to support multiple events per placed-event tile.
+        std::map<uint32_t, Maps::Map_Format::AdventureMapEventMetadata> legacyEventMetadata;
+        if ( map.version < 15 ) {
+            decompressed >> legacyEventMetadata;
+        }
+        else {
+            decompressed >> map.adventureMapEventMetadata;
+        }
+
+        decompressed >> map.selectionObjectMetadata;
 
         static_assert( minimumSupportedVersion <= 8, "Remove this check." );
         if ( map.version > 8 ) {
@@ -601,6 +629,7 @@ namespace
         convertFromV11ToV12( map );
         convertFromV12ToV13( map );
         convertFromV13ToV14( map );
+        convertFromV14ToV15( map, std::move( legacyEventMetadata ) );
 
         return !stream.fail();
     }

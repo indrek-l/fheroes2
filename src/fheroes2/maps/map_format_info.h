@@ -411,7 +411,9 @@ namespace Maps::Map_Format
 
         std::map<uint32_t, SignMetadata> signMetadata;
 
-        std::map<uint32_t, AdventureMapEventMetadata> adventureMapEventMetadata;
+        // The vector preserves the editor list order which is also the runtime execution order.
+        // Maps before format version 15 stored a single event per UID; the v14 -> v15 converter wraps each into a 1-element vector.
+        std::map<uint32_t, std::vector<AdventureMapEventMetadata>> adventureMapEventMetadata;
 
         std::map<uint32_t, SelectionObjectMetadata> selectionObjectMetadata;
 

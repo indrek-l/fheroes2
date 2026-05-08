@@ -632,8 +632,12 @@ bool World::LoadMapMP2( const std::string & filename, const bool isOriginalMp2Fi
                 break;
             case MP2::OBJ_EVENT:
                 if ( MP2::MP2_EVENT_STRUCTURE_MIN_SIZE <= pblock.size() && 0x01 == pblock[0] ) {
-                    auto obj = std::make_unique<MapEvent>();
-                    obj->LoadFromMP2( objectTileId, pblock );
+                    MapEvent event;
+                    event.LoadFromMP2( pblock );
+
+                    auto obj = std::make_unique<MapEventsList>();
+                    obj->setUIDAndIndex( objectTileId );
+                    obj->events.emplace_back( std::move( event ) );
 
                     map_objects.add( std::move( obj ) );
                 }
@@ -944,36 +948,47 @@ bool World::loadResurrectionMap( const std::string & filename )
                     adventureMapEventMetadataUIDs.emplace( object.id );
 #endif
                     assert( map.adventureMapEventMetadata.find( object.id ) != map.adventureMapEventMetadata.end() );
-                    auto & eventInfo = map.adventureMapEventMetadata[object.id];
+                    auto & eventList = map.adventureMapEventMetadata[object.id];
 
-                    eventInfo.humanPlayerColors = eventInfo.humanPlayerColors & map.humanPlayerColors;
-                    eventInfo.computerPlayerColors = eventInfo.computerPlayerColors & map.computerPlayerColors;
+                    auto eventsObject = std::make_unique<MapEventsList>();
 
-                    const PlayerColorsSet humanColors = Players::HumanColors() & eventInfo.humanPlayerColors;
-                    const PlayerColorsSet computerColors = ( ~Players::HumanColors() ) & eventInfo.computerPlayerColors;
+                    for ( auto & eventInfo : eventList ) {
+                        eventInfo.humanPlayerColors = eventInfo.humanPlayerColors & map.humanPlayerColors;
+                        eventInfo.computerPlayerColors = eventInfo.computerPlayerColors & map.computerPlayerColors;
 
-                    if ( humanColors == 0 && computerColors == 0 ) {
-                        // This event is not being executed for anyone. Skip it.
+                        const PlayerColorsSet humanColors = Players::HumanColors() & eventInfo.humanPlayerColors;
+                        const PlayerColorsSet computerColors = ( ~Players::HumanColors() ) & eventInfo.computerPlayerColors;
+
+                        if ( humanColors == 0 && computerColors == 0 ) {
+                            // This event is not being executed for anyone. Skip it.
+                            continue;
+                        }
+
+                        MapEvent event;
+                        event.resources = eventInfo.resources;
+                        event.artifact = eventInfo.artifact;
+                        if ( eventInfo.artifact == Artifact::SPELL_SCROLL ) {
+                            event.artifact.SetSpell( eventInfo.artifactMetadata );
+                        }
+
+                        event.isComputerPlayerAllowed = ( computerColors != 0 );
+                        event.colors = humanColors | computerColors;
+                        event.message = std::move( eventInfo.message );
+                        event.isSingleTimeEvent = !eventInfo.isRecurringEvent;
+                        event.secondarySkill = { eventInfo.secondarySkill, eventInfo.secondarySkillLevel };
+                        event.experience = eventInfo.experience;
+
+                        eventsObject->events.emplace_back( std::move( event ) );
+                    }
+
+                    if ( eventsObject->events.empty() ) {
+                        // No events fire for any player; do not register a runtime container for this tile.
                         break;
                     }
 
-                    auto eventObject = std::make_unique<MapEvent>();
-                    eventObject->resources = eventInfo.resources;
-                    eventObject->artifact = eventInfo.artifact;
-                    if ( eventInfo.artifact == Artifact::SPELL_SCROLL ) {
-                        eventObject->artifact.SetSpell( eventInfo.artifactMetadata );
-                    }
+                    eventsObject->setUIDAndIndex( static_cast<int32_t>( tileId ) );
 
-                    eventObject->isComputerPlayerAllowed = ( computerColors != 0 );
-                    eventObject->colors = humanColors | computerColors;
-                    eventObject->message = std::move( eventInfo.message );
-                    eventObject->isSingleTimeEvent = !eventInfo.isRecurringEvent;
-                    eventObject->secondarySkill = { eventInfo.secondarySkill, eventInfo.secondarySkillLevel };
-                    eventObject->experience = eventInfo.experience;
-
-                    eventObject->setUIDAndIndex( static_cast<int32_t>( tileId ) );
-
-                    map_objects.add( std::move( eventObject ) );
+                    map_objects.add( std::move( eventsObject ) );
 
                     break;
                 }

@@ -1271,8 +1271,8 @@ namespace
     {
         DEBUG_LOG( DBG_AI, DBG_INFO, hero.GetName() )
 
-        MapEvent * mapEvent = world.GetMapEvent( Maps::GetPoint( tileIndex ) );
-        if ( mapEvent == nullptr ) {
+        MapEventsList * eventsList = world.GetMapEventsList( Maps::GetPoint( tileIndex ) );
+        if ( eventsList == nullptr ) {
             // No data found for this event type. This may happen in the case of hacked maps.
             DEBUG_LOG( DBG_AI, DBG_INFO, "Adventure Map event at index " << tileIndex << " is missing!" )
 
@@ -1282,42 +1282,54 @@ namespace
             return;
         }
 
-        if ( !mapEvent->isComputerPlayerAllowed || !mapEvent->isAllow( hero.GetColor() ) ) {
+        bool didFireAny = false;
+        for ( MapEvent & mapEvent : eventsList->events ) {
+            if ( !mapEvent.isComputerPlayerAllowed || !mapEvent.isAllow( hero.GetColor() ) ) {
+                continue;
+            }
+
+            didFireAny = true;
+
+            hero.GetKingdom().AddFundsResource( mapEvent.resources );
+            hero.PickupArtifact( mapEvent.artifact );
+
+            const auto & skill = mapEvent.secondarySkill;
+            if ( skill.isValid() ) {
+                bool addSkill = false;
+
+                if ( hero.HasSecondarySkill( skill.Skill() ) ) {
+                    addSkill = ( hero.GetSecondarySkills().GetLevel( skill.Skill() ) < skill.Level() );
+                }
+                else {
+                    addSkill = !hero.HasMaxSecondarySkill();
+                }
+
+                if ( addSkill ) {
+                    hero.LearnSkill( skill );
+
+                    if ( skill.Skill() == Skill::Secondary::SCOUTING ) {
+                        hero.Scout( hero.GetIndex() );
+                    }
+                }
+            }
+
+            if ( mapEvent.experience > 0 ) {
+                hero.IncreaseExperience( static_cast<uint32_t>( mapEvent.experience ) );
+            }
+
+            mapEvent.SetVisited();
+        }
+
+        if ( !didFireAny ) {
             return;
         }
 
-        hero.GetKingdom().AddFundsResource( mapEvent->resources );
-        hero.PickupArtifact( mapEvent->artifact );
+        const bool allConsumed = std::all_of( eventsList->events.cbegin(), eventsList->events.cend(),
+                                              []( const MapEvent & mapEvent ) { return mapEvent.colors == 0; } );
 
-        const auto & skill = mapEvent->secondarySkill;
-        if ( skill.isValid() ) {
-            bool addSkill = false;
-
-            if ( hero.HasSecondarySkill( skill.Skill() ) ) {
-                addSkill = ( hero.GetSecondarySkills().GetLevel( skill.Skill() ) < skill.Level() );
-            }
-            else {
-                addSkill = !hero.HasMaxSecondarySkill();
-            }
-
-            if ( addSkill ) {
-                hero.LearnSkill( skill );
-
-                if ( skill.Skill() == Skill::Secondary::SCOUTING ) {
-                    hero.Scout( hero.GetIndex() );
-                }
-            }
-        }
-
-        if ( mapEvent->experience > 0 ) {
-            hero.IncreaseExperience( static_cast<uint32_t>( mapEvent->experience ) );
-        }
-
-        mapEvent->SetVisited();
-
-        if ( mapEvent->isSingleTimeEvent ) {
+        if ( allConsumed ) {
             hero.setObjectTypeUnderHero( MP2::OBJ_NONE );
-            world.RemoveMapObject( mapEvent );
+            world.RemoveMapObject( eventsList );
         }
     }
 

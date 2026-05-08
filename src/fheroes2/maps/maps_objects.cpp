@@ -41,7 +41,7 @@
 #include "translations.h"
 #include "ui_language.h"
 
-void MapEvent::LoadFromMP2( const int32_t index, const std::vector<uint8_t> & data )
+void MapEvent::LoadFromMP2( const std::vector<uint8_t> & data )
 {
     assert( data.size() >= MP2::MP2_EVENT_STRUCTURE_MIN_SIZE );
 
@@ -158,9 +158,7 @@ void MapEvent::LoadFromMP2( const int32_t index, const std::vector<uint8_t> & da
 
     message = dataStream.getString();
 
-    setUIDAndIndex( index );
-
-    DEBUG_LOG( DBG_GAME, DBG_INFO, "Ground event at tile " << index << " has event message: " << message )
+    DEBUG_LOG( DBG_GAME, DBG_INFO, "Ground event has event message: " << message )
 }
 
 void MapSphinx::LoadFromMP2( const int32_t tileIndex, const std::vector<uint8_t> & data )
@@ -343,13 +341,13 @@ IStreamBase & operator>>( IStreamBase & stream, MapBaseObject & obj )
 
 OStreamBase & operator<<( OStreamBase & stream, const MapEvent & obj )
 {
-    return stream << static_cast<const MapBaseObject &>( obj ) << obj.resources << obj.artifact << obj.isComputerPlayerAllowed << obj.isSingleTimeEvent << obj.colors
-                  << obj.message << obj.secondarySkill << obj.experience;
+    return stream << obj.resources << obj.artifact << obj.isComputerPlayerAllowed << obj.isSingleTimeEvent << obj.colors << obj.message << obj.secondarySkill
+                  << obj.experience;
 }
 
 IStreamBase & operator>>( IStreamBase & stream, MapEvent & obj )
 {
-    stream >> static_cast<MapBaseObject &>( obj ) >> obj.resources >> obj.artifact >> obj.isComputerPlayerAllowed >> obj.isSingleTimeEvent;
+    stream >> obj.resources >> obj.artifact >> obj.isComputerPlayerAllowed >> obj.isSingleTimeEvent;
 
     static_assert( LAST_SUPPORTED_FORMAT_VERSION < FORMAT_VERSION_1109_RELEASE, "Remove the logic below." );
     if ( Game::GetVersionOfCurrentSaveFile() < FORMAT_VERSION_1109_RELEASE ) {
@@ -373,6 +371,16 @@ IStreamBase & operator>>( IStreamBase & stream, MapEvent & obj )
     }
 
     return stream;
+}
+
+OStreamBase & operator<<( OStreamBase & stream, const MapEventsList & obj )
+{
+    return stream << static_cast<const MapBaseObject &>( obj ) << obj.events;
+}
+
+IStreamBase & operator>>( IStreamBase & stream, MapEventsList & obj )
+{
+    return stream >> static_cast<MapBaseObject &>( obj ) >> obj.events;
 }
 
 OStreamBase & operator<<( OStreamBase & stream, const MapSphinx & obj )
