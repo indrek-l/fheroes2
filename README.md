@@ -8,6 +8,31 @@ and user interface improvements), breathing new life into one of the most addict
 
 You can find a complete list of all of our changes and enhancements in [**this page**](docs/GAME_IMPROVEMENTS.md).
 
+## This fork
+
+This fork extends the upstream fheroes2 engine with additional scenario-authoring tooling on top of
+[**ihhub/fheroes2**](https://github.com/ihhub/fheroes2). All new behavior is gated by `.fh2m` map
+format version 17 and savegame format version 1154, so existing maps and saves continue to load
+unchanged.
+
+* **Custom victory and defeat epilogues.** A new EPILOGUES button on the map specs window lets the
+  map author write their own text for the end-of-scenario message, replacing the engine's generated
+  default. Leaving the field empty falls back to the original default.
+* **Multiple events per placed-event tile.** Event tiles now hold an ordered list of events with
+  add / edit / delete / move-up / move-down controls. Each matching entry fires in editor list
+  order; legacy single-event maps load as one-element lists.
+* **Town capture events.** Towns and castles get an EVENTS button in their editor properties that
+  authors a list of events fired when an enemy hero captures the town. Effects (resources, artifact,
+  primary/secondary skills, monsters, message) apply to the capturing hero. AI captures fire the
+  same events but suppress the message dialog.
+* **Hero-specific trigger filter.** Placed events and town capture events can optionally be
+  restricted to a single specific hero. The picker lists placed heroes and heroes locked inside
+  Prison objects (the latter become valid triggers once freed). Tile coordinates disambiguate
+  unnamed entries.
+
+The branch carrying these changes is
+[**scenario-events-phase-1-2**](https://github.com/indrek-l/fheroes2/tree/scenario-events-phase-1-2).
+
 <p align="center">
     <img src="docs/images/screenshots/screenshot_world_map.webp" width="820" alt="Screenshot of the world map">
 </p>
