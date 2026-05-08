@@ -97,6 +97,10 @@ struct MapEvent
 
     Skill::Secondary secondarySkill;
     int32_t experience{ 0 };
+
+    // Optional trigger-hero filter copied from AdventureMapEventMetadata at map load time.
+    // 0 means "any hero". Resolved against World::getHeroIdByObjectUID() at fire time.
+    uint32_t triggerHeroUID{ 0 };
 };
 
 // Holds every event placed on a single tile. Replaces the legacy registration of a stand-alone

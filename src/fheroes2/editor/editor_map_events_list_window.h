@@ -37,9 +37,13 @@ namespace fheroes2
 
 namespace Editor
 {
+    struct TriggerHeroOption;
+
     // List editor for ordered event lists. Used both for placed-event tiles and town-capture
     // events on castles. The isTownCaptureEvent flag adjusts the window title and per-event
     // labelling so the editor reads "Town events" rather than "Tile events" for towns.
+    // heroOptions seeds the per-event trigger-hero picker; an empty vector hides the picker.
     bool openMapEventsListWindow( std::vector<Maps::Map_Format::AdventureMapEventMetadata> & events, const PlayerColorsSet humanPlayerColors,
-                                  const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent = false );
+                                  const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent,
+                                  const std::vector<TriggerHeroOption> & heroOptions );
 }

@@ -482,6 +482,18 @@ public:
     // single-shot events be marked consumed in place; the changes persist via World serialization.
     std::vector<Maps::Map_Format::TownCaptureEvent> * getTownCaptureEvents( const int32_t castleTileIndex );
 
+    // Resolves an editor-time hero/jail UID to a runtime Heroes::GetID(). Returns Heroes::UNKNOWN
+    // if the UID does not correspond to a hero placed in the current world (e.g. a jail hero that
+    // failed to be hired). Used by event handlers to filter on the optional triggerHeroUID.
+    int getHeroIdByObjectUID( const uint32_t objectUID ) const;
+
+    // Records the mapping from an editor-time hero/jail UID to its runtime hero ID. Called from
+    // the .fh2m loader after a Heroes is created for that placement.
+    void registerHeroObjectUID( const uint32_t objectUID, const int heroId )
+    {
+        _heroUIDToHeroId[objectUID] = heroId;
+    }
+
     MapBaseObject * GetMapObject( const uint32_t uid )
     {
         return uid ? map_objects.get( uid ) : nullptr;
@@ -581,6 +593,11 @@ private:
     // Town capture events keyed by the castle's entrance tile index. Populated from CastleMetadata
     // at map load time; mutated at runtime as single-shot events fire and get consumed.
     std::map<int32_t, std::vector<Maps::Map_Format::TownCaptureEvent>> _townCaptureEvents;
+
+    // Editor-time hero/jail object UID -> runtime Heroes::GetID(). Populated at .fh2m load when a
+    // hero is hired for a placed-hero or jail object. Used at fire time to resolve a placed event
+    // or town capture event's optional triggerHeroUID into a runtime hero identity.
+    std::map<uint32_t, int> _heroUIDToHeroId;
 
     uint32_t _seed{ 0 }; // Map seed
 

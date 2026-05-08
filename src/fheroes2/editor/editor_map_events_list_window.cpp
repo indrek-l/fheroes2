@@ -147,7 +147,8 @@ namespace
 namespace Editor
 {
     bool openMapEventsListWindow( std::vector<Maps::Map_Format::AdventureMapEventMetadata> & events, const PlayerColorsSet humanPlayerColors,
-                                  const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent )
+                                  const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent,
+                                  const std::vector<TriggerHeroOption> & heroOptions )
     {
         const CursorRestorer cursorRestorer( true, Cursor::POINTER );
 
@@ -250,7 +251,7 @@ namespace Editor
 
             if ( le.MouseClickLeft( buttonAdd.area() ) ) {
                 Maps::Map_Format::AdventureMapEventMetadata temp;
-                if ( eventDetailsDialog( temp, humanPlayerColors, computerPlayerColors, language, isTownCaptureEvent ) ) {
+                if ( eventDetailsDialog( temp, humanPlayerColors, computerPlayerColors, language, isTownCaptureEvent, heroOptions ) ) {
                     events.emplace_back( std::move( temp ) );
 
                     eventList.updateScrollBarImage();
@@ -267,7 +268,7 @@ namespace Editor
                 eventList.resetDoubleClickedState();
 
                 Maps::Map_Format::AdventureMapEventMetadata temp = eventList.GetCurrent();
-                if ( eventDetailsDialog( temp, humanPlayerColors, computerPlayerColors, language, isTownCaptureEvent ) ) {
+                if ( eventDetailsDialog( temp, humanPlayerColors, computerPlayerColors, language, isTownCaptureEvent, heroOptions ) ) {
                     eventList.GetCurrent() = std::move( temp );
 
                     eventList.Redraw();

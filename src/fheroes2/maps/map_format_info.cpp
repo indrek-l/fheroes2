@@ -107,13 +107,18 @@ namespace
     constexpr uint16_t minimumSupportedVersion{ 2 };
 
     // Change the version when there is a need to expand map format functionality.
-    constexpr uint16_t currentSupportedVersion{ 16 };
+    constexpr uint16_t currentSupportedVersion{ 17 };
 
     // Map version under which CastleMetadata is currently being deserialized. Set by loadFromStream
     // around the per-map-version body read so that operator>>(CastleMetadata) can decide whether the
     // newer fields are present in the stream. Defaults to currentSupportedVersion (so writes and any
     // unrelated reads behave as the latest version).
     uint16_t g_castleMetadataReadVersion{ currentSupportedVersion };
+
+    // Map version under which AdventureMapEventMetadata is currently being deserialized. Used the
+    // same way as g_castleMetadataReadVersion: callers (.fh2m loader and World savegame loader)
+    // set this around the relevant read so the operator can decide whether triggerHeroUID is present.
+    uint16_t g_eventMetadataReadVersion{ currentSupportedVersion };
 
     void convertFromV2ToV3( Maps::Map_Format::MapFormat & map )
     {
@@ -483,6 +488,19 @@ namespace
         // (empty) by the v15-aware loader path, preserving legacy behavior.
     }
 
+    void convertFromV16ToV17( Maps::Map_Format::MapFormat & map )
+    {
+        static_assert( minimumSupportedVersion <= 16, "Remove this function." );
+
+        if ( map.version > 16 ) {
+            return;
+        }
+
+        // Version 17 introduces an optional trigger-hero filter on placed and town capture events.
+        // No on-disk conversion is required: triggerHeroUID is default-initialized to 0 ("any hero")
+        // by the version-gated reader path, preserving legacy behavior.
+    }
+
     bool saveToStream( OStreamBase & stream, const Maps::Map_Format::BaseMapFormat & map )
     {
         stream << currentSupportedVersion << map.isCampaign << map.difficulty << map.availablePlayerColors << map.humanPlayerColors << map.computerPlayerColors
@@ -605,15 +623,15 @@ namespace
             decompressed >> standardMetadata;
         }
 
-        // Inform the CastleMetadata deserializer how to interpret pre-v16 streams that do not contain
-        // the captureEvents field. The flag is reset to currentSupportedVersion below for safety.
+        // Inform the per-struct deserializers (CastleMetadata, AdventureMapEventMetadata) how to
+        // interpret pre-current streams that do not contain newer optional fields. Both flags need
+        // to cover the entire MapFormat body read because castleMetadata contains nested vectors
+        // of AdventureMapEventMetadata (town capture events) — not just the standalone
+        // adventureMapEventMetadata read further down.
         g_castleMetadataReadVersion = map.version;
+        g_eventMetadataReadVersion = map.version;
 
-        decompressed >> map.castleMetadata;
-
-        g_castleMetadataReadVersion = currentSupportedVersion;
-
-        decompressed >> map.heroMetadata >> map.sphinxMetadata >> map.signMetadata;
+        decompressed >> map.castleMetadata >> map.heroMetadata >> map.sphinxMetadata >> map.signMetadata;
 
         // Maps before format version 15 stored a single AdventureMapEventMetadata per UID.
         // Version 15+ stores a vector to support multiple events per placed-event tile.
@@ -624,6 +642,9 @@ namespace
         else {
             decompressed >> map.adventureMapEventMetadata;
         }
+
+        g_castleMetadataReadVersion = currentSupportedVersion;
+        g_eventMetadataReadVersion = currentSupportedVersion;
 
         decompressed >> map.selectionObjectMetadata;
 
@@ -658,6 +679,7 @@ namespace
         convertFromV13ToV14( map );
         convertFromV14ToV15( map, std::move( legacyEventMetadata ) );
         convertFromV15ToV16( map );
+        convertFromV16ToV17( map );
 
         return !stream.fail();
     }
@@ -759,18 +781,38 @@ namespace Maps::Map_Format
         return stream >> metadata.message;
     }
 
+    void setEventMetadataReadVersion( const uint16_t version )
+    {
+        g_eventMetadataReadVersion = version;
+    }
+
+    void clearEventMetadataReadVersion()
+    {
+        g_eventMetadataReadVersion = currentSupportedVersion;
+    }
+
     OStreamBase & operator<<( OStreamBase & stream, const AdventureMapEventMetadata & metadata )
     {
         return stream << metadata.message << metadata.humanPlayerColors << metadata.computerPlayerColors << metadata.isRecurringEvent << metadata.artifact
                       << metadata.artifactMetadata << metadata.resources << metadata.attack << metadata.defense << metadata.knowledge << metadata.spellPower
-                      << metadata.experience << metadata.secondarySkill << metadata.secondarySkillLevel << metadata.monsterType << metadata.monsterCount;
+                      << metadata.experience << metadata.secondarySkill << metadata.secondarySkillLevel << metadata.monsterType << metadata.monsterCount
+                      << metadata.triggerHeroUID;
     }
 
     IStreamBase & operator>>( IStreamBase & stream, AdventureMapEventMetadata & metadata )
     {
-        return stream >> metadata.message >> metadata.humanPlayerColors >> metadata.computerPlayerColors >> metadata.isRecurringEvent >> metadata.artifact
-               >> metadata.artifactMetadata >> metadata.resources >> metadata.attack >> metadata.defense >> metadata.knowledge >> metadata.spellPower
-               >> metadata.experience >> metadata.secondarySkill >> metadata.secondarySkillLevel >> metadata.monsterType >> metadata.monsterCount;
+        stream >> metadata.message >> metadata.humanPlayerColors >> metadata.computerPlayerColors >> metadata.isRecurringEvent >> metadata.artifact
+            >> metadata.artifactMetadata >> metadata.resources >> metadata.attack >> metadata.defense >> metadata.knowledge >> metadata.spellPower >> metadata.experience
+            >> metadata.secondarySkill >> metadata.secondarySkillLevel >> metadata.monsterType >> metadata.monsterCount;
+
+        if ( g_eventMetadataReadVersion >= 17 ) {
+            stream >> metadata.triggerHeroUID;
+        }
+        else {
+            metadata.triggerHeroUID = 0;
+        }
+
+        return stream;
     }
 
     OStreamBase & operator<<( OStreamBase & stream, const SelectionObjectMetadata & metadata )

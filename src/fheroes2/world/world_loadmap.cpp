@@ -894,6 +894,8 @@ bool World::loadResurrectionMap( const std::string & filename )
 
                         hero->applyHeroMetadata( heroInfo, false, false );
 
+                        registerHeroObjectUID( object.id, hero->GetID() );
+
                         hiredHeroTileId.emplace( tileId );
                     }
                     else {
@@ -990,6 +992,7 @@ bool World::loadResurrectionMap( const std::string & filename )
                         event.isSingleTimeEvent = !eventInfo.isRecurringEvent;
                         event.secondarySkill = { eventInfo.secondarySkill, eventInfo.secondarySkillLevel };
                         event.experience = eventInfo.experience;
+                        event.triggerHeroUID = eventInfo.triggerHeroUID;
 
                         eventsObject->events.emplace_back( std::move( event ) );
                     }
@@ -1027,6 +1030,8 @@ bool World::loadResurrectionMap( const std::string & filename )
                         hero->SetColor( color );
 
                         hero->applyHeroMetadata( heroInfo, true, false );
+
+                        registerHeroObjectUID( object.id, hero->GetID() );
                     }
                     else {
                         VERBOSE_LOG( "A hero at position " << tileId << " with UID " << object.id << " failed to be hired." )

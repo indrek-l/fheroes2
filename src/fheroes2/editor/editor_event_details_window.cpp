@@ -63,12 +63,139 @@ namespace
     const int32_t elementOffset{ 9 };
     const int32_t sectionWidth{ ( fheroes2::Display::DEFAULT_WIDTH - elementOffset * 3 ) / 2 };
     const fheroes2::Size messageArea{ sectionWidth, 207 };
+
+    // List dialog for picking a trigger hero. Index -1 is reserved for the synthetic "Any hero"
+    // entry that maps to triggerHeroUID = 0; indices 0..n-1 reference the heroOptions vector.
+    class TriggerHeroPicker final : public Dialog::ItemSelectionWindow
+    {
+    public:
+        TriggerHeroPicker( const fheroes2::Size & dialogSize, std::string title, const std::vector<Editor::TriggerHeroOption> & heroOptions )
+            : Dialog::ItemSelectionWindow( dialogSize, std::move( title ) )
+            , _heroOptions( heroOptions )
+        {
+            SetAreaMaxItems( rtAreaItems.height / itemsOffsetY );
+        }
+
+        void RedrawItem( const int32_t & optionIndex, int32_t dstx, int32_t dsty, bool current ) override
+        {
+            const std::string & label = optionIndex < 0 ? _anyHeroLabel : _heroOptions[static_cast<size_t>( optionIndex )].label;
+
+            const fheroes2::FontType font = current ? fheroes2::FontType::normalYellow() : fheroes2::FontType::normalWhite();
+            const fheroes2::Text text( label, font );
+            text.draw( dstx + 10, dsty + itemsOffsetY / 2 - text.height() / 2 + 2, fheroes2::Display::instance() );
+        }
+
+        static const int32_t itemsOffsetY{ 22 };
+
+    private:
+        const std::vector<Editor::TriggerHeroOption> & _heroOptions;
+        const std::string _anyHeroLabel{ _( "(any hero)" ) };
+    };
+
+    // Returns the new triggerHeroUID after the user closes the picker. If the user cancels we keep
+    // the existing value. If they pick "(any hero)" we store 0.
+    uint32_t pickTriggerHero( const std::vector<Editor::TriggerHeroOption> & heroOptions, const uint32_t currentUID )
+    {
+        const int32_t maxHeight = std::min( 100 + TriggerHeroPicker::itemsOffsetY * 12, fheroes2::Display::instance().height() - 100 );
+        const int32_t itemsHeight = std::max( 100 + TriggerHeroPicker::itemsOffsetY * static_cast<int32_t>( heroOptions.size() + 1 ),
+                                              100 + TriggerHeroPicker::itemsOffsetY * 5 );
+        const int32_t totalHeight = std::min( itemsHeight, maxHeight );
+
+        TriggerHeroPicker picker( { 360, totalHeight }, _( "Select trigger hero:" ), heroOptions );
+
+        // Index list: -1 represents "(any hero)" followed by indices 0..n-1 into heroOptions.
+        std::vector<int32_t> indices;
+        indices.reserve( heroOptions.size() + 1 );
+        indices.push_back( -1 );
+        for ( size_t i = 0; i < heroOptions.size(); ++i ) {
+            indices.push_back( static_cast<int32_t>( i ) );
+        }
+
+        picker.SetListContent( indices );
+
+        int32_t initialSelection = 0;
+        if ( currentUID != 0 ) {
+            for ( size_t i = 0; i < heroOptions.size(); ++i ) {
+                if ( heroOptions[i].uid == currentUID ) {
+                    initialSelection = static_cast<int32_t>( i + 1 );
+                    break;
+                }
+            }
+        }
+
+        picker.SetCurrent( initialSelection );
+
+        if ( picker.selectItemsEventProcessing() != Dialog::OK ) {
+            // User cancelled.
+            return currentUID;
+        }
+
+        // GetCurrent() returns the value stored at the selected row of the indices vector. -1 means
+        // "(any hero)"; non-negative is the position in heroOptions.
+        const int32_t pickedValue = picker.GetCurrent();
+        return pickedValue < 0 ? 0u : heroOptions[static_cast<size_t>( pickedValue )].uid;
+    }
 }
 
 namespace Editor
 {
+    std::vector<TriggerHeroOption> buildTriggerHeroOptions( const Maps::Map_Format::MapFormat & map )
+    {
+        std::vector<TriggerHeroOption> options;
+
+        const auto & miscellaneousObjects = Maps::getObjectsByGroup( Maps::ObjectGroup::ADVENTURE_MISCELLANEOUS );
+
+        for ( size_t tileIndex = 0; tileIndex < map.tiles.size(); ++tileIndex ) {
+            for ( const auto & object : map.tiles[tileIndex].objects ) {
+                bool isJailed = false;
+
+                if ( object.group == Maps::ObjectGroup::KINGDOM_HEROES ) {
+                    // Placed hero.
+                }
+                else if ( object.group == Maps::ObjectGroup::ADVENTURE_MISCELLANEOUS ) {
+                    if ( object.index >= miscellaneousObjects.size() ) {
+                        continue;
+                    }
+                    if ( miscellaneousObjects[object.index].objectType != MP2::OBJ_JAIL ) {
+                        continue;
+                    }
+                    isJailed = true;
+                }
+                else {
+                    continue;
+                }
+
+                const auto heroMetadataIter = map.heroMetadata.find( object.id );
+                const std::string customName = heroMetadataIter != map.heroMetadata.end() ? heroMetadataIter->second.customName : std::string{};
+
+                std::string label;
+                if ( !customName.empty() ) {
+                    label = customName;
+                }
+                else {
+                    // Multiple unnamed heroes are indistinguishable by name alone, so include
+                    // tile coordinates so the mapmaker can pick the correct one.
+                    const int32_t tileX = static_cast<int32_t>( tileIndex ) % map.width;
+                    const int32_t tileY = static_cast<int32_t>( tileIndex ) / map.width;
+                    label = std::string{ _( "Unnamed hero" ) } + " (" + std::to_string( tileX ) + ", " + std::to_string( tileY ) + ")";
+                }
+
+                if ( isJailed ) {
+                    // Jailed heroes only become a valid trigger after the player frees them, so we
+                    // surface that state in the picker label.
+                    label += _( " (jailed)" );
+                }
+
+                options.push_back( { object.id, std::move( label ), isJailed } );
+            }
+        }
+
+        return options;
+    }
+
     bool eventDetailsDialog( Maps::Map_Format::AdventureMapEventMetadata & eventMetadata, const PlayerColorsSet humanPlayerColors,
-                             const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent )
+                             const PlayerColorsSet computerPlayerColors, const fheroes2::SupportedLanguage language, const bool isTownCaptureEvent,
+                             const std::vector<TriggerHeroOption> & heroOptions )
     {
         // First, make sure that the event has proper player colors according to the map specification.
         eventMetadata.humanPlayerColors = eventMetadata.humanPlayerColors & humanPlayerColors;
@@ -195,6 +322,37 @@ namespace Editor
         }
         else {
             recurringEventCheckbox.show();
+        }
+
+        // Optional trigger-hero picker. Sits just below the recurring-event checkbox on the left
+        // side of the conditions block. Hidden when there are no placed or jailed heroes on the map.
+        fheroes2::Rect triggerHeroRoi;
+        std::unique_ptr<fheroes2::ImageRestorer> triggerHeroBackground;
+
+        const auto buildTriggerHeroLabel = [&heroOptions]( const uint32_t uid ) -> std::string {
+            std::string base{ _( "Trigger hero: " ) };
+            if ( uid == 0 ) {
+                return base + _( "any" );
+            }
+            for ( const auto & opt : heroOptions ) {
+                if ( opt.uid == uid ) {
+                    return base + opt.label;
+                }
+            }
+            // Fallback: the trigger hero entry no longer exists in the map (e.g. the placed hero was deleted).
+            return base + _( "(unknown)" );
+        };
+
+        const auto drawTriggerHeroLabel = [&display, &triggerHeroRoi, &buildTriggerHeroLabel, &eventMetadata]() {
+            const fheroes2::Text label{ buildTriggerHeroLabel( eventMetadata.triggerHeroUID ), fheroes2::FontType::normalWhite() };
+            label.drawInRoi( triggerHeroRoi.x + 5, triggerHeroRoi.y + 4, triggerHeroRoi.width - 10, display, triggerHeroRoi );
+        };
+
+        if ( !heroOptions.empty() ) {
+            triggerHeroRoi = { recurringEventPos.x, recurringEventArea.y + recurringEventArea.height + elementOffset, sectionWidth - elementOffset, 22 };
+            background.applyTextBackgroundShading( triggerHeroRoi );
+            triggerHeroBackground = std::make_unique<fheroes2::ImageRestorer>( display, triggerHeroRoi.x, triggerHeroRoi.y, triggerHeroRoi.width, triggerHeroRoi.height );
+            drawTriggerHeroLabel();
         }
 
         offsetY = conditionSectionOffsetY;
@@ -362,6 +520,15 @@ namespace Editor
                 eventMetadata.isRecurringEvent = !eventMetadata.isRecurringEvent;
                 eventMetadata.isRecurringEvent ? recurringEventCheckbox.hide() : recurringEventCheckbox.show();
                 display.render( recurringEventCheckbox.getArea() );
+            }
+            else if ( !heroOptions.empty() && le.MouseClickLeft( triggerHeroRoi ) ) {
+                const uint32_t newUID = pickTriggerHero( heroOptions, eventMetadata.triggerHeroUID );
+                if ( newUID != eventMetadata.triggerHeroUID ) {
+                    eventMetadata.triggerHeroUID = newUID;
+                }
+                triggerHeroBackground->restore();
+                drawTriggerHeroLabel();
+                isRedrawNeeded = true;
             }
             else if ( le.MouseClickLeft( artifactRoi ) ) {
                 const Artifact artifact = Dialog::selectArtifact( eventMetadata.artifact, false );

@@ -91,6 +91,11 @@ namespace Maps::Map_Format
         int32_t monsterType{ 0 };
         int32_t monsterCount{ 0 };
 
+        // Optional trigger-hero filter. 0 means "any hero" (legacy behavior); a non-zero value is
+        // the editor-time UID of a placed hero or a hero locked inside a Prison object. Only that
+        // specific hero will fire the event when present at runtime.
+        uint32_t triggerHeroUID{ 0 };
+
         bool operator==( const AdventureMapEventMetadata & anotherMetadata ) const
         {
             return message == anotherMetadata.message && humanPlayerColors == anotherMetadata.humanPlayerColors
@@ -99,7 +104,7 @@ namespace Maps::Map_Format
                    && attack == anotherMetadata.attack && defense == anotherMetadata.defense && knowledge == anotherMetadata.knowledge
                    && spellPower == anotherMetadata.spellPower && experience == anotherMetadata.experience && secondarySkill == anotherMetadata.secondarySkill
                    && secondarySkillLevel == anotherMetadata.secondarySkillLevel && monsterType == anotherMetadata.monsterType
-                   && monsterCount == anotherMetadata.monsterCount;
+                   && monsterCount == anotherMetadata.monsterCount && triggerHeroUID == anotherMetadata.triggerHeroUID;
         }
 
         bool operator!=( const AdventureMapEventMetadata & anotherMetadata ) const
@@ -449,4 +454,14 @@ namespace Maps::Map_Format
     // serializers (e.g. World's town capture events) can find these via ADL.
     OStreamBase & operator<<( OStreamBase & stream, const AdventureMapEventMetadata & metadata );
     IStreamBase & operator>>( IStreamBase & stream, AdventureMapEventMetadata & metadata );
+
+    // Tells the AdventureMapEventMetadata deserializer whether the stream contains the optional
+    // triggerHeroUID field (introduced in .fh2m v17 / savegame format 1154). The .fh2m loader sets
+    // it based on map.version. The World savegame loader must set it based on save format version
+    // before reading vectors of TownCaptureEvent and reset it afterwards. Pass 17 (or any value
+    // >= 17) to indicate "latest format"; pass 16 to indicate the legacy layout without the field.
+    void setEventMetadataReadVersion( const uint16_t version );
+
+    // Reset to currentSupportedVersion so subsequent operator>> reads default to the latest layout.
+    void clearEventMetadataReadVersion();
 }

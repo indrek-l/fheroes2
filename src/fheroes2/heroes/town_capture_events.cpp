@@ -64,6 +64,12 @@ void fireTownCaptureEvents( const Castle & castle, Heroes & hero, const bool aiC
             continue;
         }
 
+        // Optional trigger-hero filter: skip when the event is restricted to a specific hero and
+        // the capturing hero is not that one. UID 0 means "any hero".
+        if ( event.triggerHeroUID != 0 && world.getHeroIdByObjectUID( event.triggerHeroUID ) != hero.GetID() ) {
+            continue;
+        }
+
         // Apply rewards. Order mirrors the placed-event handler so that hero state changes happen
         // before the optional message dialog renders any updated stats.
         const Funds fundsToUpdate = Resource::CalculateEventResourceUpdate( hero.GetKingdom().GetFunds(), event.resources );

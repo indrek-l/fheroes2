@@ -342,7 +342,7 @@ IStreamBase & operator>>( IStreamBase & stream, MapBaseObject & obj )
 OStreamBase & operator<<( OStreamBase & stream, const MapEvent & obj )
 {
     return stream << obj.resources << obj.artifact << obj.isComputerPlayerAllowed << obj.isSingleTimeEvent << obj.colors << obj.message << obj.secondarySkill
-                  << obj.experience;
+                  << obj.experience << obj.triggerHeroUID;
 }
 
 IStreamBase & operator>>( IStreamBase & stream, MapEvent & obj )
@@ -368,6 +368,14 @@ IStreamBase & operator>>( IStreamBase & stream, MapEvent & obj )
     }
     else {
         stream >> obj.secondarySkill >> obj.experience;
+    }
+
+    static_assert( LAST_SUPPORTED_FORMAT_VERSION < FORMAT_VERSION_1154_RELEASE, "Remove the logic below." );
+    if ( Game::GetVersionOfCurrentSaveFile() < FORMAT_VERSION_1154_RELEASE ) {
+        obj.triggerHeroUID = 0;
+    }
+    else {
+        stream >> obj.triggerHeroUID;
     }
 
     return stream;

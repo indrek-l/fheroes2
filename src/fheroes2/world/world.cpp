@@ -937,6 +937,12 @@ std::vector<Maps::Map_Format::TownCaptureEvent> * World::getTownCaptureEvents( c
     return it == _townCaptureEvents.end() ? nullptr : &it->second;
 }
 
+int World::getHeroIdByObjectUID( const uint32_t objectUID ) const
+{
+    const auto it = _heroUIDToHeroId.find( objectUID );
+    return it == _heroUIDToHeroId.end() ? Heroes::UNKNOWN : it->second;
+}
+
 const Heroes * World::GetHeroesCondWins() const
 {
     return ( ( Settings::Get().getCurrentMapInfo().ConditionWins() & GameOver::WINS_HERO ) != 0 ) ? GetHeroes( heroIdAsWinCondition ) : nullptr;
@@ -1492,7 +1498,7 @@ OStreamBase & operator<<( OStreamBase & stream, const World & w )
 {
     return stream << w.width << w.height << w.vec_tiles << w.vec_heroes << w.vec_castles << w.vec_kingdoms << w._customRumors << w.vec_eventsday << w.map_captureobj
                   << w._ultimateArtifact << w._day << w._week << w._month << w.heroIdAsWinCondition << w.heroIdAsLossCondition << w.map_objects << w._seed
-                  << w._townCaptureEvents;
+                  << w._townCaptureEvents << w._heroUIDToHeroId;
 }
 
 IStreamBase & operator>>( IStreamBase & stream, World & w )
@@ -1558,7 +1564,21 @@ IStreamBase & operator>>( IStreamBase & stream, World & w )
         w._townCaptureEvents.clear();
     }
     else {
+        // The AdventureMapEventMetadata deserializer needs to know whether the savegame stream
+        // contains the v17/1154 triggerHeroUID field. Drive it from the save format version.
+        Maps::Map_Format::setEventMetadataReadVersion( Game::GetVersionOfCurrentSaveFile() < FORMAT_VERSION_1154_RELEASE ? 16 : 17 );
+
         stream >> w._townCaptureEvents;
+
+        Maps::Map_Format::clearEventMetadataReadVersion();
+    }
+
+    static_assert( LAST_SUPPORTED_FORMAT_VERSION < FORMAT_VERSION_1154_RELEASE, "Remove the logic below." );
+    if ( Game::GetVersionOfCurrentSaveFile() < FORMAT_VERSION_1154_RELEASE ) {
+        w._heroUIDToHeroId.clear();
+    }
+    else {
+        stream >> w._heroUIDToHeroId;
     }
 
     w.PostLoad( false, true );

@@ -21,6 +21,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #include "color.h"
 
@@ -36,6 +37,8 @@ namespace fheroes2
 
 namespace Editor
 {
+    struct TriggerHeroOption;
+
     bool castleDetailsDialog( Maps::Map_Format::CastleMetadata & castleMetadata, const int race, const PlayerColor color, const fheroes2::SupportedLanguage language,
-                              const PlayerColorsSet humanPlayerColors, const PlayerColorsSet computerPlayerColors );
+                              const PlayerColorsSet humanPlayerColors, const PlayerColorsSet computerPlayerColors, const std::vector<TriggerHeroOption> & heroOptions );
 }

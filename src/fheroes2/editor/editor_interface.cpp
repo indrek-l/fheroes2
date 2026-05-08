@@ -2076,7 +2076,9 @@ namespace Interface
                     auto & castleMetadata = _mapFormat.castleMetadata[object.id];
                     Maps::Map_Format::CastleMetadata newCastleMetadata = castleMetadata;
 
-                    if ( Editor::castleDetailsDialog( newCastleMetadata, race, color, _mapFormat.mainLanguage, _mapFormat.humanPlayerColors, _mapFormat.computerPlayerColors )
+                    const std::vector<Editor::TriggerHeroOption> heroOptions = Editor::buildTriggerHeroOptions( _mapFormat );
+                    if ( Editor::castleDetailsDialog( newCastleMetadata, race, color, _mapFormat.mainLanguage, _mapFormat.humanPlayerColors, _mapFormat.computerPlayerColors,
+                                                      heroOptions )
                          && ( castleMetadata != newCastleMetadata ) ) {
                         fheroes2::ActionCreator action( _historyManager, _mapFormat, fheroes2::ActionCreator::ActionType::CASTLE_METADATA );
                         castleMetadata = std::move( newCastleMetadata );
@@ -2103,8 +2105,10 @@ namespace Interface
 
                     auto & eventList = _mapFormat.adventureMapEventMetadata[object.id];
                     std::vector<Maps::Map_Format::AdventureMapEventMetadata> newEventList = eventList;
+                    const std::vector<Editor::TriggerHeroOption> heroOptions = Editor::buildTriggerHeroOptions( _mapFormat );
 
-                    if ( Editor::openMapEventsListWindow( newEventList, _mapFormat.humanPlayerColors, _mapFormat.computerPlayerColors, _mapFormat.mainLanguage )
+                    if ( Editor::openMapEventsListWindow( newEventList, _mapFormat.humanPlayerColors, _mapFormat.computerPlayerColors, _mapFormat.mainLanguage, false,
+                                                          heroOptions )
                          && newEventList != eventList ) {
                         fheroes2::ActionCreator action( _historyManager, _mapFormat, fheroes2::ActionCreator::ActionType::ADVENTURE_MAP_EVENT_METADATA );
                         eventList = std::move( newEventList );

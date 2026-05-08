@@ -2832,6 +2832,12 @@ namespace
                 continue;
             }
 
+            // Optional trigger-hero filter: skip when the event is restricted to a specific hero
+            // and the current hero is not that one. UID 0 means "any hero".
+            if ( mapEvent.triggerHeroUID != 0 && world.getHeroIdByObjectUID( mapEvent.triggerHeroUID ) != hero.GetID() ) {
+                continue;
+            }
+
             didFireAny = true;
             hero.SetMove( false );
 

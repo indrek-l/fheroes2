@@ -610,7 +610,7 @@ namespace
 namespace Editor
 {
     bool castleDetailsDialog( Maps::Map_Format::CastleMetadata & castleMetadata, const int race, const PlayerColor color, const fheroes2::SupportedLanguage language,
-                              const PlayerColorsSet humanPlayerColors, const PlayerColorsSet computerPlayerColors )
+                              const PlayerColorsSet humanPlayerColors, const PlayerColorsSet computerPlayerColors, const std::vector<TriggerHeroOption> & heroOptions )
     {
         const auto beforeChangesCastleMetadata{ castleMetadata };
 
@@ -885,7 +885,7 @@ namespace Editor
                 // Reuse the placed-events list dialog: TownCaptureEvent is an alias for AdventureMapEventMetadata.
                 // The town-capture flag retitles the dialogs so the editor reads "Town event" rather than "Tile event".
                 std::vector<Maps::Map_Format::AdventureMapEventMetadata> draft = castleMetadata.captureEvents;
-                if ( openMapEventsListWindow( draft, humanPlayerColors, computerPlayerColors, language, true ) ) {
+                if ( openMapEventsListWindow( draft, humanPlayerColors, computerPlayerColors, language, true, heroOptions ) ) {
                     castleMetadata.captureEvents = std::move( draft );
                 }
                 display.render( dialogWithShadowRoi );
