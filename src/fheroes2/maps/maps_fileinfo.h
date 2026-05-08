@@ -262,6 +262,11 @@ namespace Maps
         // Optional field available only in Resurrection maps.
         std::string creatorNotes;
 
+        // Optional custom end-of-scenario messages. Empty means "use the default generated message".
+        // Available only in Resurrection maps (legacy mp2 keeps these empty).
+        std::string customVictoryMessage;
+        std::string customLossMessage;
+
     private:
         void FillUnions( const PlayerColorsSet side1Colors, const PlayerColorsSet side2Colors );
     };

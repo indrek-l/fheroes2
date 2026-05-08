@@ -382,6 +382,11 @@ namespace Maps::Map_Format
         // The parameter is mandatory to fill out by map makers who want to have their creations bundled with the engine.
         std::string creatorNotes;
 
+        // Optional custom messages shown at the end of the scenario. When empty the engine falls back
+        // to the default generated victory/loss text. Authored in mainLanguage; translation is not yet supported.
+        std::string customVictoryMessage;
+        std::string customLossMessage;
+
         // A map can support multiple languages. A language of the map should be chosen based on game's language.
         std::map<fheroes2::SupportedLanguage, TranslationBaseMapMetadata> translations;
     };

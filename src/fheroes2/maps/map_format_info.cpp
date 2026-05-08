@@ -107,7 +107,7 @@ namespace
     constexpr uint16_t minimumSupportedVersion{ 2 };
 
     // Change the version when there is a need to expand map format functionality.
-    constexpr uint16_t currentSupportedVersion{ 13 };
+    constexpr uint16_t currentSupportedVersion{ 14 };
 
     void convertFromV2ToV3( Maps::Map_Format::MapFormat & map )
     {
@@ -435,12 +435,25 @@ namespace
         }
     }
 
+    void convertFromV13ToV14( Maps::Map_Format::MapFormat & map )
+    {
+        static_assert( minimumSupportedVersion <= 13, "Remove this function." );
+
+        if ( map.version > 13 ) {
+            return;
+        }
+
+        // Version 14 introduces optional custom victory/loss messages on BaseMapFormat.
+        // No on-disk tile/object conversion is required: the new fields are default-initialized
+        // (empty strings) by the loader when map.version < 14, preserving legacy behavior.
+    }
+
     bool saveToStream( OStreamBase & stream, const Maps::Map_Format::BaseMapFormat & map )
     {
         stream << currentSupportedVersion << map.isCampaign << map.difficulty << map.availablePlayerColors << map.humanPlayerColors << map.computerPlayerColors
                << map.alliances << map.playerRace << map.victoryConditionType << map.isVictoryConditionApplicableForAI << map.allowNormalVictory
                << map.victoryConditionMetadata << map.lossConditionType << map.lossConditionMetadata << map.width << map.mainLanguage << map.name << map.description
-               << map.creatorNotes << map.translations;
+               << map.creatorNotes << map.translations << map.customVictoryMessage << map.customLossMessage;
 
         return !stream.fail();
     }
@@ -476,6 +489,14 @@ namespace
         }
         else {
             stream >> map.translations;
+        }
+
+        if ( map.version < 14 ) {
+            map.customVictoryMessage = {};
+            map.customLossMessage = {};
+        }
+        else {
+            stream >> map.customVictoryMessage >> map.customLossMessage;
         }
 
         return !stream.fail();
@@ -579,6 +600,7 @@ namespace
 
         convertFromV11ToV12( map );
         convertFromV12ToV13( map );
+        convertFromV13ToV14( map );
 
         return !stream.fail();
     }

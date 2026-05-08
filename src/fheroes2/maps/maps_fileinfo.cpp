@@ -187,6 +187,9 @@ void Maps::FileInfo::Reset()
     translations = {};
 
     creatorNotes = {};
+
+    customVictoryMessage = {};
+    customLossMessage = {};
 }
 
 bool Maps::FileInfo::readMP2Map( std::string filePath, const bool isForEditor )
@@ -536,6 +539,9 @@ bool Maps::FileInfo::loadResurrectionMap( const Map_Format::BaseMapFormat & map,
 
     creatorNotes = map.creatorNotes;
 
+    customVictoryMessage = map.customVictoryMessage;
+    customLossMessage = map.customLossMessage;
+
     return true;
 }
 
@@ -676,7 +682,7 @@ OStreamBase & Maps::operator<<( OStreamBase & stream, const FileInfo & fi )
     return stream << fi.kingdomColors << fi.colorsAvailableForHumans << fi.colorsAvailableForComp << fi.colorsOfRandomRaces << fi.victoryConditionType << fi.compAlsoWins
                   << fi.allowNormalVictory << fi.victoryConditionParams[0] << fi.victoryConditionParams[1] << fi.lossConditionType << fi.lossConditionParams[0]
                   << fi.lossConditionParams[1] << fi.timestamp << fi.startWithHeroInFirstCastle << fi.version << fi.worldDay << fi.worldWeek << fi.worldMonth
-                  << fi.mainLanguage << fi.creatorNotes;
+                  << fi.mainLanguage << fi.creatorNotes << fi.customVictoryMessage << fi.customLossMessage;
 }
 
 IStreamBase & Maps::operator>>( IStreamBase & stream, FileInfo & fi )
@@ -722,6 +728,15 @@ IStreamBase & Maps::operator>>( IStreamBase & stream, FileInfo & fi )
     }
     else {
         stream >> fi.creatorNotes;
+    }
+
+    static_assert( LAST_SUPPORTED_FORMAT_VERSION < FORMAT_VERSION_1151_RELEASE, "Remove the logic below." );
+    if ( Game::GetVersionOfCurrentSaveFile() < FORMAT_VERSION_1151_RELEASE ) {
+        fi.customVictoryMessage = {};
+        fi.customLossMessage = {};
+    }
+    else {
+        stream >> fi.customVictoryMessage >> fi.customLossMessage;
     }
 
     return stream;

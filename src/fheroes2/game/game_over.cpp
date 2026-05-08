@@ -83,6 +83,11 @@ namespace
 
         const auto & mapInfo = conf.getCurrentMapInfo();
 
+        if ( strings.empty() && !mapInfo.customVictoryMessage.empty() ) {
+            // Map author has provided a custom victory message; render it in the map's main language.
+            strings.emplace_back( mapInfo.customVictoryMessage, mapInfo.getSupportedLanguage().value_or( gameLanguage ) );
+        }
+
         if ( strings.empty() ) {
             switch ( cond ) {
             case GameOver::WINS_ALL:
@@ -162,6 +167,12 @@ namespace
 
         const auto & mapInfo = conf.getCurrentMapInfo();
 
+        if ( !mapInfo.customLossMessage.empty() ) {
+            // Map author has provided a custom defeat message; render it in the map's main language.
+            strings.emplace_back( mapInfo.customLossMessage, mapInfo.getSupportedLanguage().value_or( gameLanguage ) );
+        }
+
+        if ( strings.empty() ) {
         switch ( cond ) {
         case GameOver::LOSS_ENEMY_WINS_TOWN: {
             const Castle * town = world.getCastleEntrance( mapInfo.WinsMapsPositionObject() );
@@ -233,6 +244,7 @@ namespace
 
         default:
             break;
+        }
         }
 
         if ( !strings.empty() ) {

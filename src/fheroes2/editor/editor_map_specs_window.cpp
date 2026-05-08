@@ -2059,10 +2059,27 @@ namespace Editor
             mapFormat.name = "My Map";
         }
 
+        // The top-right buttons must be created before the map name field so we can shift
+        // the field left far enough to clear them — the field is otherwise centered in the
+        // dialog and would overlap the buttons (and, when there are 6 players, the rightmost
+        // player icon would also be hidden under the lower button).
+        fheroes2::ButtonSprite buttonAbout;
+        const char * topRightTranslatedText = fheroes2::getSupportedText( gettext_noop( "map|ABOUT" ), fheroes2::FontType::buttonReleasedWhite() );
+        background.renderTextAdaptedButtonSprite( buttonAbout, topRightTranslatedText, { 21, 12 }, fheroes2::StandardWindow::Padding::TOP_RIGHT );
+
+        fheroes2::ButtonSprite buttonLanguage;
+        topRightTranslatedText = fheroes2::getSupportedText( gettext_noop( "LANGUAGE" ), fheroes2::FontType::buttonReleasedWhite() );
+        background.renderTextAdaptedButtonSprite( buttonLanguage, topRightTranslatedText, { 21 + buttonAbout.area().width + 6, 12 },
+                                                  fheroes2::StandardWindow::Padding::TOP_RIGHT );
+
+        // Width of the area on the right reserved for the top-right buttons (including outer margin).
+        const int32_t topRightButtonsReservedWidth = 21 + buttonAbout.area().width + 6 + buttonLanguage.area().width;
+
         // Map name.
         const fheroes2::Sprite & scenarioBox = fheroes2::AGG::GetICN( isEvilInterface ? ICN::METALLIC_BORDERED_TEXTBOX_EVIL : ICN::METALLIC_BORDERED_TEXTBOX_GOOD, 0 );
-        const fheroes2::Rect scenarioBoxRoi( activeArea.x + ( activeArea.width - scenarioBox.width() ) / 2, activeArea.y + 10, scenarioBox.width(),
-                                             scenarioBox.height() );
+        // Center the map name box in the area to the left of the reserved button strip rather than the full dialog width.
+        const fheroes2::Rect scenarioBoxRoi( activeArea.x + ( activeArea.width - topRightButtonsReservedWidth - scenarioBox.width() ) / 2, activeArea.y + 10,
+                                             scenarioBox.width(), scenarioBox.height() );
         const fheroes2::Rect mapNameRoi( scenarioBoxRoi.x + 6, scenarioBoxRoi.y + 5, scenarioBoxRoi.width - 12, scenarioBoxRoi.height - 11 );
 
         fheroes2::Copy( scenarioBox, 0, 0, display, scenarioBoxRoi );
@@ -2224,14 +2241,10 @@ namespace Editor
         background.renderTextAdaptedButtonSprite( buttonEvents, translatedText, { 20 + buttonRumors.area().width + 10, 6 },
                                                   fheroes2::StandardWindow::Padding::BOTTOM_LEFT );
 
-        fheroes2::ButtonSprite buttonLanguage;
-        translatedText = fheroes2::getSupportedText( gettext_noop( "LANGUAGE" ), fheroes2::FontType::buttonReleasedWhite() );
-        background.renderTextAdaptedButtonSprite( buttonLanguage, translatedText, { 20 + buttonRumors.area().width + buttonEvents.area().width + 2 * 10, 6 },
+        fheroes2::ButtonSprite buttonEpilogues;
+        translatedText = fheroes2::getSupportedText( gettext_noop( "EPILOGUES" ), fheroes2::FontType::buttonReleasedWhite() );
+        background.renderTextAdaptedButtonSprite( buttonEpilogues, translatedText, { 20 + buttonRumors.area().width + buttonEvents.area().width + 2 * 10, 6 },
                                                   fheroes2::StandardWindow::Padding::BOTTOM_LEFT );
-
-        fheroes2::ButtonSprite buttonAbout;
-        translatedText = fheroes2::getSupportedText( gettext_noop( "map|ABOUT" ), fheroes2::FontType::buttonReleasedWhite() );
-        background.renderTextAdaptedButtonSprite( buttonAbout, translatedText, { 21, 12 }, fheroes2::StandardWindow::Padding::TOP_RIGHT );
 
         auto renderMapName = [&text, &mapFormat, &display, &scenarioBox, &mapNameRoi, &scenarioBoxRoi]() {
             text.set( mapFormat.name, fheroes2::FontType::normalWhite(), mapFormat.mainLanguage );
@@ -2258,6 +2271,7 @@ namespace Editor
             buttonRumors.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonRumors.area() ) );
             buttonEvents.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonEvents.area() ) );
             buttonLanguage.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonLanguage.area() ) );
+            buttonEpilogues.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonEpilogues.area() ) );
             victoryDroplistButton.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( victoryDroplistButtonRoi ) );
             lossDroplistButton.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( lossDroplistButtonRoi ) );
             buttonAbout.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonAbout.area() ) );
@@ -2368,6 +2382,19 @@ namespace Editor
                     mapFormat.creatorNotes = std::move( notes );
                 }
             }
+            else if ( le.MouseClickLeft( buttonEpilogues.area() ) ) {
+                std::string victoryMessage = mapFormat.customVictoryMessage;
+                const fheroes2::Text victoryBody{ std::string( _( "Custom victory message (leave empty for default):" ) ), fheroes2::FontType::normalWhite() };
+                if ( Dialog::inputString( fheroes2::Text{}, victoryBody, victoryMessage, Maps::Map_Format::messageCharLimit, true, mapFormat.mainLanguage ) ) {
+                    mapFormat.customVictoryMessage = std::move( victoryMessage );
+                }
+
+                std::string lossMessage = mapFormat.customLossMessage;
+                const fheroes2::Text lossBody{ std::string( _( "Custom defeat message (leave empty for default):" ) ), fheroes2::FontType::normalWhite() };
+                if ( Dialog::inputString( fheroes2::Text{}, lossBody, lossMessage, Maps::Map_Format::messageCharLimit, true, mapFormat.mainLanguage ) ) {
+                    mapFormat.customLossMessage = std::move( lossMessage );
+                }
+            }
             else if ( le.isMouseRightButtonPressedInArea( buttonCancel.area() ) ) {
                 fheroes2::showStandardTextMessage( _( "Cancel" ), _( "Exit this menu without doing anything." ), Dialog::ZERO );
             }
@@ -2382,6 +2409,11 @@ namespace Editor
             }
             else if ( le.isMouseRightButtonPressedInArea( buttonLanguage.area() ) ) {
                 fheroes2::showStandardTextMessage( _( "Language" ), _( "Click to change the language of the map." ), Dialog::ZERO );
+            }
+            else if ( le.isMouseRightButtonPressedInArea( buttonEpilogues.area() ) ) {
+                fheroes2::showStandardTextMessage( _( "Epilogues" ),
+                                                   _( "Click to edit the custom victory and defeat messages shown when the scenario ends. Leave them empty to keep the default messages." ),
+                                                   Dialog::ZERO );
             }
             else if ( le.isMouseRightButtonPressedInArea( buttonAbout.area() ) ) {
                 fheroes2::showStandardTextMessage( _( "map|About" ),
