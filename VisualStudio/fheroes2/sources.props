@@ -112,6 +112,7 @@
     <ClCompile Include="src\fheroes2\editor\editor_interface_panel.cpp" />
     <ClCompile Include="src\fheroes2\editor\editor_language_window.cpp" />
     <ClCompile Include="src\fheroes2\editor\editor_mainmenu.cpp" />
+    <ClCompile Include="src\fheroes2\editor\editor_map_events_list_window.cpp" />
     <ClCompile Include="src\fheroes2\editor\editor_map_specs_window.cpp" />
     <ClCompile Include="src\fheroes2\editor\editor_object_popup_window.cpp" />
     <ClCompile Include="src\fheroes2\editor\editor_castle_details_window.cpp" />
@@ -194,6 +195,7 @@
     <ClCompile Include="src\fheroes2\heroes\heroes_spell.cpp" />
     <ClCompile Include="src\fheroes2\heroes\route.cpp" />
     <ClCompile Include="src\fheroes2\heroes\skill.cpp" />
+    <ClCompile Include="src\fheroes2\heroes\town_capture_events.cpp" />
     <ClCompile Include="src\fheroes2\kingdom\color.cpp" />
     <ClCompile Include="src\fheroes2\kingdom\experience.cpp" />
     <ClCompile Include="src\fheroes2\kingdom\kingdom.cpp" />
@@ -332,6 +334,7 @@
     <ClInclude Include="src\fheroes2\editor\editor_interface_panel.h" />
     <ClInclude Include="src\fheroes2\editor\editor_language_window.h" />
     <ClInclude Include="src\fheroes2\editor\editor_mainmenu.h" />
+    <ClInclude Include="src\fheroes2\editor\editor_map_events_list_window.h" />
     <ClInclude Include="src\fheroes2\editor\editor_map_specs_window.h" />
     <ClInclude Include="src\fheroes2\editor\editor_object_popup_window.h" />
     <ClInclude Include="src\fheroes2\editor\editor_daily_event_spec_window.h" />
@@ -407,6 +410,7 @@
     <ClInclude Include="src\fheroes2\heroes\route.h" />
     <ClInclude Include="src\fheroes2\heroes\skill.h" />
     <ClInclude Include="src\fheroes2\heroes\skill_static.h" />
+    <ClInclude Include="src\fheroes2\heroes\town_capture_events.h" />
     <ClInclude Include="src\fheroes2\image\embedded_image.h" />
     <ClInclude Include="src\fheroes2\kingdom\color.h" />
     <ClInclude Include="src\fheroes2\kingdom\experience.h" />
