@@ -30,8 +30,51 @@ unchanged.
   Prison objects (the latter become valid triggers once freed). Tile coordinates disambiguate
   unnamed entries.
 
-The branch carrying these changes is
-[**scenario-events-phase-1-2**](https://github.com/indrek-l/fheroes2/tree/scenario-events-phase-1-2).
+## Building this fork
+
+There are no precompiled binaries for this fork — you have to build it from source. The upstream
+build tooling in `script/` and the `fheroes2-vs2019.vcxproj` project already pick up the fork's
+source files, so the standard fheroes2 build process produces the modified binary.
+
+### Windows
+
+Prerequisites:
+
+* [**Visual Studio 2019**](https://visualstudio.microsoft.com/) (or newer, e.g. 2022 Community
+  Edition) with the **Desktop development with C++** workload installed.
+* [**Git for Windows**](https://git-scm.com/download/win) to clone the fork.
+* PowerShell (shipped with Windows) — used by the dependency script below.
+
+Steps:
+
+1. Clone this fork (the fork's changes are on `master`):
+
+   ```cmd
+   git clone https://github.com/indrek-l/fheroes2.git
+   cd fheroes2
+   ```
+
+2. From the repo root, run `script\windows\install_packages.bat`. This downloads a prebuilt SDL2
+   bundle into `VisualStudio\packages\` — the Visual Studio project links against it.
+3. Provide the original Heroes of Might and Magic II resources so the game has something to load:
+   * If you own the original game, copy the `ANIM`, `DATA`, `MAPS` and `MUSIC` subdirectories from
+     the original installation into the repo root (some of them may be missing depending on the
+     original game version — copy whichever exist).
+   * Otherwise, run `script\demo\download_demo_version.bat` to fetch the free English demo.
+4. Open `fheroes2-vs2019.vcxproj` in Visual Studio, pick the `Release` / `x64` configuration and
+   build the solution (`Ctrl+Shift+B`). The resulting `fheroes2.exe` is written to
+   `src\dist\fheroes2\` and Visual Studio copies the game data next to it automatically.
+5. Launch `fheroes2.exe` from that folder. On the map specs window in the Editor you should see
+   the new EPILOGUES button — that confirms you are running the fork's build and not stock
+   fheroes2.
+
+### Linux and macOS
+
+The upstream build steps in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md#macos-and-linux) work
+unchanged for this fork — the fork's source files are compiled by the same `make` invocation.
+After cloning, run `script/linux/install_sdl2_dev.sh` (Linux) or `brew bundle` from
+`script/macos/` (macOS), drop the HoMM2 resources into the repo root, then run `make` from the
+repo root.
 
 <p align="center">
     <img src="docs/images/screenshots/screenshot_world_map.webp" width="820" alt="Screenshot of the world map">
